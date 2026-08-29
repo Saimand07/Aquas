@@ -81,6 +81,7 @@ export default function BatchVerificationPage() {
         <nav aria-label="Primary navigation">
           <Link href="/">Verify</Link>
           <Link href="/batch" className="active">Batch Verifier</Link>
+          <Link href="/explorer">Explorer</Link>
           <Link href="/deploy">Deploy</Link>
         </nav>
         <div className="network-controls">
