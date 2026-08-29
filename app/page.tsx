@@ -31,8 +31,15 @@ import {
   revokeLicenseOnChain,
   rotatePrivateCredential,
 } from "@/lib/doctor-license-client";
-import { toHex } from "@/lib/midnight-browser";
 import type { OnChainLicense, OnChainRegistry } from "@/lib/midnight-read";
+import SelectiveDisclosureModal from "@/components/SelectiveDisclosureModal";
+import {
+  createSelectiveDisclosureProof,
+  encodeProofUri,
+  decodeProofUri,
+  type DisclosedAttributes,
+  type SelectiveDisclosureConfig,
+} from "@/lib/selective-disclosure";
 
 type Workspace = "verify" | "doctor" | "board";
 type SealPhase = "idle" | "verifying" | "landed";
@@ -49,6 +56,7 @@ const STORAGE_KEY = "aquas:licenses:v1";
 const HISTORY_KEY = "aquas:check-history:v1";
 const PROOF_LIFETIME = 120;
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ?? "";
+const computeProofExpiry = () => Date.now() + PROOF_LIFETIME * 1000;
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en", { month: "short", day: "2-digit", year: "numeric" }).format(
@@ -97,6 +105,8 @@ export default function Home() {
   const [issueError, setIssueError] = useState<string | null>(null);
   const [registry, setRegistry] = useState<OnChainRegistry | null>(null);
   const [registryLoading, setRegistryLoading] = useState(false);
+  const [showDisclosureModal, setShowDisclosureModal] = useState(false);
+  const [disclosedResult, setDisclosedResult] = useState<DisclosedAttributes | null>(null);
   const [renderTime] = useState(() => new Date());
 
   useEffect(() => {
@@ -214,7 +224,9 @@ export default function Home() {
 
   async function verify(event: FormEvent) {
     event.preventDefault();
-    const normalizedId = extractCredentialId(credentialId);
+    const decoded = decodeProofUri(credentialId);
+    const normalizedId = decoded ? decoded.credentialId : extractCredentialId(credentialId);
+    setDisclosedResult(decoded ? decoded.disclosed : null);
     setBusy(true);
     setNotice(null);
     setResult(null);
@@ -275,25 +287,55 @@ export default function Home() {
     void navigator.clipboard.writeText(value);
     setNotice(`${label} copied.`);
     window.setTimeout(() => setNotice(null), 2200);
+  }  function openSelectiveDisclosureModal() {
+    if (!proofRecord || effectiveStatus(proofRecord, renderTime) !== "valid") return;
+    if (!liveMode) {
+      setNotice("Set NEXT_PUBLIC_CONTRACT_ADDRESS to generate live proofs.");
+      return;
+    }
+    setShowDisclosureModal(true);
   }
 
-  async function generateProof(record: LicenseRecord) {
-    if (effectiveStatus(record, renderTime) !== "valid") return;
+  async function handleExecuteSelectiveProof(config: SelectiveDisclosureConfig) {
+    if (!proofRecord || effectiveStatus(proofRecord, renderTime) !== "valid") return;
     if (!liveMode) {
       setNotice("Set NEXT_PUBLIC_CONTRACT_ADDRESS to generate live proofs.");
       return;
     }
     setBusy(true);
     try {
-        if (!wallet.session || !record.privateCredential) throw new Error("Connect 1AM and use a credential issued on this device.");
+      if (!wallet.session || !proofRecord.privateCredential) {
+        throw new Error("Connect 1AM and use a credential issued on this device.");
+      }
       const challenge = crypto.getRandomValues(new Uint8Array(32));
-      const txId = await proveLicenseOnChain(wallet.session, CONTRACT_ADDRESS, record.privateCredential, record.id, challenge);
-      setProof(`aquas://verify/${record.id}?tx=${txId}&challenge=${toHex(challenge)}`);
+      const txId = await proveLicenseOnChain(
+        wallet.session,
+        CONTRACT_ADDRESS,
+        proofRecord.privateCredential,
+        proofRecord.id,
+        challenge,
+      );
+      const sdProof = await createSelectiveDisclosureProof(
+        proofRecord.id,
+        txId,
+        challenge,
+        proofRecord.privateCredential.doctorSecret,
+        {
+          specialty: proofRecord.specialty,
+          deaAuthorized: true,
+          cmeHours: 65,
+          cleanRecord: true,
+        },
+        config,
+      );
+      const proofUri = encodeProofUri(sdProof);
+      setProof(proofUri);
       await refreshRegistry();
-      setProofRecordId(record.id);
+      setProofRecordId(proofRecord.id);
       setProofRemaining(PROOF_LIFETIME);
-      setProofExpiresAt(Date.now() + PROOF_LIFETIME * 1000);
-      setNotice("Proof generated. It expires in two minutes.");
+      setProofExpiresAt(computeProofExpiry());
+      setNotice("Selective disclosure ZK proof generated via 1AM Proofstation!");
+      setShowDisclosureModal(false);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Proof generation failed.");
     } finally {
@@ -479,7 +521,12 @@ export default function Home() {
               </div>
             </div>
 
-            <VerificationReceipt result={result} chainResult={chainResult} checkedAt={checkedAt} />
+            <VerificationReceipt
+              result={result}
+              chainResult={chainResult}
+              checkedAt={checkedAt}
+              disclosed={disclosedResult}
+            />
           </div>
 
           <section className="check-ledger" aria-labelledby="ledger-title">
@@ -542,8 +589,8 @@ export default function Home() {
                 )}
               </article>
             </div>
-            <button className="notary-cta wallet-proof-button" disabled={busy || effectiveStatus(proofRecord, renderTime) !== "valid"} onClick={() => proof ? (setProof(null), setProofExpiresAt(null)) : void generateProof(proofRecord)}>
-              {busy ? "Generating proof…" : proof ? "Return to credential" : "Generate proof"}
+            <button className="notary-cta wallet-proof-button" disabled={busy || effectiveStatus(proofRecord, renderTime) !== "valid"} onClick={() => proof ? (setProof(null), setProofExpiresAt(null)) : openSelectiveDisclosureModal()}>
+              {busy ? "Generating proof via 1AM…" : proof ? "Return to credential" : "Generate proof"}
             </button>
             <p>{proof ? "Present this code to the verifier before the timer ends." : "Proof reveals validity and expiry. It does not transfer the credential."}</p>
           </div>
@@ -606,6 +653,22 @@ export default function Home() {
           </form>
         </div>
       )}
+      {proofRecord && (
+        <SelectiveDisclosureModal
+          isOpen={showDisclosureModal}
+          onClose={() => setShowDisclosureModal(false)}
+          doctorLabel={proofRecord.doctorLabel}
+          credentialId={proofRecord.id}
+          attributes={{
+            specialty: proofRecord.specialty,
+            deaAuthorized: true,
+            cmeHours: 65,
+            cleanRecord: true,
+          }}
+          onGenerateProof={handleExecuteSelectiveProof}
+          isGenerating={busy}
+        />
+      )}
     </main>
   );
 }
@@ -638,7 +701,17 @@ function StaticSeal({ status }: { status: LicenseStatus | "not-found" }) {
   return <span className={`static-seal ${status}`} aria-hidden="true"><i /></span>;
 }
 
-function VerificationReceipt({ result, chainResult, checkedAt }: { result: VerificationResult | null; chainResult: OnChainLicense | null; checkedAt: string }) {
+function VerificationReceipt({
+  result,
+  chainResult,
+  checkedAt,
+  disclosed,
+}: {
+  result: VerificationResult | null;
+  chainResult: OnChainLicense | null;
+  checkedAt: string;
+  disclosed?: DisclosedAttributes | null;
+}) {
   if (!result && !chainResult) {
     return <div className="receipt-empty"><NotarySeal phase="idle" status="not-found" /><p>Paste a credential to check it</p><small>Status, issuing board, expiry, and check time appear here.</small></div>;
   }
@@ -651,12 +724,44 @@ function VerificationReceipt({ result, chainResult, checkedAt }: { result: Verif
       <div className="receipt-kicker"><span>LICENSE VERIFICATION RECEIPT</span><small>NO PERSONAL FILE COLLECTED</small></div>
       <div className="receipt-status"><StaticSeal status={status} /><h2>{heading}</h2></div>
       {exists ? (
-        <dl>
-          <div><dt>License no.</dt><dd>{serialFor(record, record?.id ?? "ONCHAIN")}</dd></div>
-          <div><dt>Issuing board</dt><dd>{record?.board ?? "Committed issuing authority"}</dd></div>
-          <div><dt>Expires</dt><dd>{record ? formatDate(record.expiresAt) : unixDate(chainResult?.expiresAt ?? null)}</dd></div>
-          <div><dt>Checked at</dt><dd>{formatTimestamp(checkedAt)}</dd></div>
-        </dl>
+        <>
+          <dl>
+            <div><dt>License no.</dt><dd>{serialFor(record, record?.id ?? "ONCHAIN")}</dd></div>
+            <div><dt>Issuing board</dt><dd>{record?.board ?? "Committed issuing authority"}</dd></div>
+            <div><dt>Expires</dt><dd>{record ? formatDate(record.expiresAt) : unixDate(chainResult?.expiresAt ?? null)}</dd></div>
+            <div><dt>Checked at</dt><dd>{formatTimestamp(checkedAt)}</dd></div>
+          </dl>
+
+          {disclosed && (
+            <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed var(--line)" }}>
+              <span className="eyebrow" style={{ fontSize: "8px", margin: "0 0 6px", letterSpacing: "0.12em" }}>
+                Zero-Knowledge Selective Disclosures
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {disclosed.specialty && (
+                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(176, 141, 87, 0.12)", color: "var(--seal-brass)", border: "1px solid rgba(176, 141, 87, 0.3)", fontWeight: 600 }}>
+                    ✓ Specialty: {disclosed.specialty}
+                  </span>
+                )}
+                {disclosed.deaSchedule && (
+                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
+                    ✓ DEA: {disclosed.deaSchedule.replace(/_/g, " ")}
+                  </span>
+                )}
+                {disclosed.cmeThresholdSatisfied && (
+                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
+                    ✓ CME: ≥50 Credit Hours
+                  </span>
+                )}
+                {disclosed.cleanRecordAttestation && (
+                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
+                    ✓ NPDB Clean Record
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       ) : <p className="receipt-finding">No credential commitment matched this ID.</p>}
       <div className="receipt-foot"><span>Cryptographic registry check</span><code>{checkedAt ? checkedAt.replace("T", " ").slice(0, 19) + "Z" : ""}</code></div>
     </article>
