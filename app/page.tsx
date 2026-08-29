@@ -463,6 +463,7 @@ export default function Home() {
           <button className={workspace === "verify" ? "active" : ""} onClick={() => setWorkspace("verify")}>Verify</button>
           <Link href="/batch">Batch Verifier</Link>
           <Link href="/explorer">Explorer</Link>
+          <Link href="/ehr">EHR Gateway</Link>
           <button className={workspace === "doctor" ? "active" : ""} onClick={() => setWorkspace("doctor")}>Your credential</button>
           <button className={workspace === "board" ? "active" : ""} onClick={() => setWorkspace("board")}>Board registry</button>
           <Link href="/deploy">Deploy</Link>

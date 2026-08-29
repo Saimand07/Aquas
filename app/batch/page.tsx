@@ -82,6 +82,7 @@ export default function BatchVerificationPage() {
           <Link href="/">Verify</Link>
           <Link href="/batch" className="active">Batch Verifier</Link>
           <Link href="/explorer">Explorer</Link>
+          <Link href="/ehr">EHR Gateway</Link>
           <Link href="/deploy">Deploy</Link>
         </nav>
         <div className="network-controls">
