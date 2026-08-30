@@ -27,8 +27,10 @@ import {
 } from "@/lib/midnight-browser";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
+import { saveDeployedContract, clearDeployedContract } from "@/lib/deployed-contract";
 
 type DeploymentRecord = {
+
   contractAddress: string;
   transactionId: string;
   deployedAt: string;
@@ -70,9 +72,9 @@ export default function DeployClient() {
   const mounted = useRef(true);
 
   const netConfig = getNetworkConfig(deployNetwork);
-  const storageKey = `aquas:deployment:${deployNetwork}`;
 
   const [deployment, setDeployment] = useState<DeploymentRecord | null>(() => loadStoredDeployment(deployNetwork));
+
 
   const handleNetworkChange = (net: MidnightNetwork) => {
     switchNetwork(net);
@@ -172,7 +174,7 @@ export default function DeployClient() {
       setDeployment(record);
       setOwnerSecret(toHex(secret));
       setDeploying(false);
-      window.localStorage.setItem(storageKey, JSON.stringify(record));
+      saveDeployedContract(deployNetwork, record.contractAddress, record.transactionId);
       setStatus(`✓ Contract confirmed on ${netConfig.badge} — indexer syncing in background…`);
 
       // Rich in-app toast notification with verifiable explorer link
@@ -226,11 +228,12 @@ export default function DeployClient() {
   }
 
   const resetToCanonical = () => {
-    window.localStorage.removeItem(storageKey);
+    clearDeployedContract(deployNetwork);
     setDeployment(null);
     setStatus(`Cleared ${deployNetwork} deployment record. Ready to deploy fresh.`);
     toast.info(`Cleared ${deployNetwork} deployment record.`);
   };
+
 
   const explorerContractUrl = deployment ? getExplorerContractUrl(deployment.contractAddress, deployNetwork) : "";
   // On Midnight, the tx hash for a deploy may equal the contract address — both point to /contract/ on explorer

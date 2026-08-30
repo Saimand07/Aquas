@@ -24,13 +24,15 @@ import NetworkMetricsCard from "@/components/NetworkMetricsCard";
 import ExpirationRadar from "@/components/ExpirationRadar";
 import ActivityFeed from "@/components/ActivityFeed";
 import CircuitCallWorkbench from "@/components/CircuitCallWorkbench";
+import { useActiveContract } from "@/lib/deployed-contract";
 
 export default function ExplorerPage() {
   const wallet = useMidnightWallet();
   const { currentNetwork } = useAuth();
   const netConfig = getNetworkConfig(currentNetwork);
-  const contractAddress = netConfig.canonicalContract;
+  const contractAddress = useActiveContract(currentNetwork);
   const liveMode = Boolean(contractAddress);
+
 
   const [registry, setRegistry] = useState<OnChainRegistry | null>(null);
   const [loading, setLoading] = useState(false);

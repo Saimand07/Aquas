@@ -31,7 +31,9 @@ import {
   getNetworkConfig,
   getExplorerContractUrl
 } from "@/lib/midnight-browser";
+import { useActiveContract } from "@/lib/deployed-contract";
 import { createPrivateCredential, issueLicenseOnChain } from "@/lib/doctor-license-client";
+
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
 import SelectiveDisclosureModal from "@/components/SelectiveDisclosureModal";
@@ -132,10 +134,12 @@ export default function DashboardCommandCenter() {
 
   const wallet = useMidnightWallet();
   const auth = useAuth();
+  const activeContract = useActiveContract(auth.currentNetwork);
   const stats = {
     active: records.filter((r) => effectiveStatus(r) === "valid").length,
     checks: history.length,
   };
+
 
   const handleVerify = async (event?: FormEvent) => {
     if (event) event.preventDefault();
@@ -256,8 +260,9 @@ export default function DashboardCommandCenter() {
       if (wallet.connected || auth.authType === "wallet") {
         try {
           const activeSession = wallet.session || await connectOneAm(auth.currentNetwork, "/zk/doctor_license/");
-          const contractAddress = getNetworkConfig(auth.currentNetwork).canonicalContract;
+          const contractAddress = activeContract;
           const issuedAtBigInt = BigInt(Math.floor(Date.now() / 1000));
+
           const expiresAtBigInt = BigInt(Math.floor(new Date(expiresAt).getTime() / 1000));
           
           await issueLicenseOnChain(
@@ -544,7 +549,7 @@ export default function DashboardCommandCenter() {
                       <div className="pt-2 border-t border-white/5 flex justify-between items-center">
                         <span className="text-zinc-500 text-[10px]">On-Chain Contract:</span>
                         <a
-                          href={getExplorerContractUrl(getNetworkConfig(auth.currentNetwork).canonicalContract, auth.currentNetwork)}
+                          href={getExplorerContractUrl(activeContract, auth.currentNetwork)}
                           target="_blank"
                           rel="noreferrer"
                           className="text-[#3fa96b] hover:underline flex items-center gap-1 text-[10px] font-mono"
@@ -552,6 +557,7 @@ export default function DashboardCommandCenter() {
                           <Globe size={11} />
                           <span>View on Explorer ({getNetworkConfig(auth.currentNetwork).badge}) ↗</span>
                         </a>
+
                       </div>
                     </div>
                   )}

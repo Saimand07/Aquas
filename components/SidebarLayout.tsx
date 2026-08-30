@@ -25,6 +25,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { FluidParticlesBackground } from "@/components/ui/fluid-particles-background";
 import { getNetworkConfig, getExplorerContractUrl } from "@/lib/midnight-browser";
+import { useActiveContract } from "@/lib/deployed-contract";
+
 
 const NAV_ITEMS = [
   { label: "Command Center", icon: LayoutDashboard, href: "/dashboard" },
@@ -59,6 +61,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     () => false
   );
 
+  const netConfig = getNetworkConfig(currentNetwork);
+  const activeContract = useActiveContract(currentNetwork);
+  const explorerContractUrl = getExplorerContractUrl(activeContract, currentNetwork);
+
   // If not authenticated, redirect to /auth/signin
   useEffect(() => {
     if (isMounted && !isAuthenticated) {
@@ -70,9 +76,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     return null; // Don't flash dashboard if unauthenticated
   }
 
-  const netConfig = getNetworkConfig(currentNetwork);
-  const activeContract = netConfig.canonicalContract;
-  const explorerContractUrl = getExplorerContractUrl(activeContract, currentNetwork);
+
 
   const userInitial = user?.name ? user.name.charAt(0) : "A";
   const userDisplayName = user?.name || "Dr. Sarah Lin, MD";

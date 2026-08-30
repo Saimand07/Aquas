@@ -107,9 +107,22 @@ export async function POST(request: Request) {
     const indexerWsUri = normalizeMidnightUrl(body.indexerWsUri, netConfig.indexerWsUri, ["wss:", "ws:"]);
 
     if (body.mode === "registry") {
-      const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri, network);
-      return Response.json(data);
+      try {
+        const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri, network);
+        return Response.json(data);
+      } catch (readErr) {
+        console.warn("[Aquas API] Registry read notice (contract may be new or syncing):", readErr);
+        return Response.json({
+          records: [],
+          boardCount: 0,
+          issuanceCount: 0,
+          activeLicenseCount: 0,
+          verificationCount: 0,
+          revocationCount: 0,
+        });
+      }
     }
+
 
     if (typeof body.credentialId !== "string" || !body.credentialId.trim()) {
       return Response.json({ error: "Credential ID missing." }, { status: 400 });

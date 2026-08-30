@@ -33,6 +33,8 @@ import {
   getNetworkConfig,
   getExplorerTxUrl
 } from "@/lib/midnight-browser";
+import { useActiveContract } from "@/lib/deployed-contract";
+
 
 type CircuitType = "proveValidLicense" | "createLicense" | "createBoard" | "deleteLicense";
 
@@ -47,6 +49,7 @@ export default function CircuitCallWorkbench() {
   const wallet = useMidnightWallet();
   const { authType, currentNetwork, isAuthenticated } = useAuth();
   const netConfig = getNetworkConfig(currentNetwork);
+  const activeContract = useActiveContract(currentNetwork);
 
   const [selectedCircuit, setSelectedCircuit] = useState<CircuitType>("proveValidLicense");
   const [executing, setExecuting] = useState(false);
@@ -110,7 +113,8 @@ export default function CircuitCallWorkbench() {
     setErrorMsg(null);
     setLogs([`Initiating live circuit call: ${selectedCircuit} on ${netConfig.name}...`]);
 
-    const contractAddress = netConfig.canonicalContract;
+    const contractAddress = activeContract;
+
 
     if (!isWalletConnected) {
       addLog("[ERROR] 1AM Wallet is not connected.");
