@@ -163,7 +163,8 @@ export default function CircuitCallWorkbench() {
 
         const challenge = crypto.getRandomValues(new Uint8Array(32));
         addLog(`Using commitment ID: ${resolvedCredentialId.slice(0, 16)}…`);
-        addLog(`Step 4/4: Submitting proof to ${netConfig.name} (${netConfig.rpcUri})…`);
+        addLog(`Step 4/4: Synthesizing ZK proof & requesting 1AM authorization…`);
+        addLog(`👉 Please approve the transaction in your 1AM wallet popup to submit on-chain…`);
 
         tx = await proveLicenseOnChain(
           sess,
@@ -173,13 +174,13 @@ export default function CircuitCallWorkbench() {
           challenge
         );
 
-
         setTxHash(tx);
-        addLog(`✓ Circuit Execution Confirmed! Transaction ID: ${tx}`);
+        addLog(`✓ Circuit Execution Confirmed on ${netConfig.badge}!`);
+        addLog(`Transaction Hash: ${tx}`);
         toast.success(`Zero-Knowledge Proof Verified On ${netConfig.badge}!`, {
-          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          description: `Transaction: ${tx.slice(0, 18)}…`,
           action: {
-            label: "Explorer ↗",
+            label: "View on Explorer ↗",
             onClick: () => window.open(getExplorerTxUrl(tx, currentNetwork), "_blank"),
           },
         });
@@ -195,15 +196,17 @@ export default function CircuitCallWorkbench() {
 
         const now = BigInt(Math.floor(Date.now() / 1000));
         const expiry = now + BigInt(86400 * 365 * 3);
-        addLog(`Step 4/4: Submitting createLicense transition to ${netConfig.name} ledger…`);
+        addLog(`Step 4/4: Requesting 1AM authorization & submitting state transition…`);
+        addLog(`👉 Please approve the transaction in your 1AM wallet popup…`);
 
         tx = await issueLicenseOnChain(sess, contractAddress, boardSecret, newId, now, expiry);
         setTxHash(tx);
-        addLog(`✓ createLicense Confirmed! Transaction ID: ${tx}`);
+        addLog(`✓ createLicense Confirmed on ${netConfig.badge}!`);
+        addLog(`Transaction Hash: ${tx}`);
         toast.success(`Medical License Committed to ${netConfig.badge} Ledger!`, {
-          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          description: `Transaction: ${tx.slice(0, 18)}…`,
           action: {
-            label: "Explorer ↗",
+            label: "View on Explorer ↗",
             onClick: () => window.open(getExplorerTxUrl(tx, currentNetwork), "_blank"),
           },
         });
@@ -212,35 +215,40 @@ export default function CircuitCallWorkbench() {
         const { key } = deriveBoardIdentity(boardSecret);
         addLog(`Board Public Key: ${toHex(key)}`);
         addLog("Step 3/4: Synthesizing Board Authorization proof via 1AM Proofstation…");
-        addLog("Step 4/4: Transmitting state update to trustedBoards Set…");
+        addLog("Step 4/4: Requesting 1AM authorization & transmitting state update…");
+        addLog(`👉 Please approve the transaction in your 1AM wallet popup…`);
 
         tx = await registerBoardOnChain(sess, contractAddress, ownerSecret, boardSecret);
         setTxHash(tx);
-        addLog(`✓ createBoard Confirmed! Transaction ID: ${tx}`);
+        addLog(`✓ createBoard Confirmed on ${netConfig.badge}!`);
+        addLog(`Transaction Hash: ${tx}`);
         toast.success(`State Medical Board Registered on ${netConfig.badge}!`, {
-          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          description: `Transaction: ${tx.slice(0, 18)}…`,
           action: {
-            label: "Explorer ↗",
+            label: "View on Explorer ↗",
             onClick: () => window.open(getExplorerTxUrl(tx, currentNetwork), "_blank"),
           },
         });
       } else if (selectedCircuit === "deleteLicense") {
         addLog(`Preparing license revocation for: ${credentialId}`);
         addLog("Step 3/4: Proving board signing authority via 1AM Proofstation…");
-        addLog("Step 4/4: Moving credential to revokedLicenses Set…");
+        addLog("Step 4/4: Requesting 1AM authorization to move credential to revoked set…");
+        addLog(`👉 Please approve the transaction in your 1AM wallet popup…`);
 
         tx = await revokeLicenseOnChain(sess, contractAddress, boardSecret, credentialId.replace(/^0x/, ""));
         setTxHash(tx);
-        addLog(`✓ deleteLicense Confirmed! Transaction ID: ${tx}`);
+        addLog(`✓ deleteLicense Confirmed on ${netConfig.badge}!`);
+        addLog(`Transaction Hash: ${tx}`);
         toast.success(`License Nullified on ${netConfig.badge}!`, {
-          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          description: `Transaction: ${tx.slice(0, 18)}…`,
           action: {
-            label: "Explorer ↗",
+            label: "View on Explorer ↗",
             onClick: () => window.open(getExplorerTxUrl(tx, currentNetwork), "_blank"),
           },
         });
       }
     } catch (err) {
+
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
       addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Error: ${msg}`);

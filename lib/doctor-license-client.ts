@@ -2,8 +2,11 @@
 
 import {
   createCircuitCallTxInterface,
-  findDeployedContract
+  createUnprovenCallTx,
+  submitTxAsync,
 } from "@midnight-ntwrk/midnight-js-contracts";
+
+
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { Contract } from "../contracts/managed/doctor_license/contract/index.js";
 import {
@@ -106,29 +109,28 @@ async function callContract(
   session.providers.privateStateProvider.setContractAddress(cleanAddr);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, privateState);
 
+  // 1. Create the unproven call transaction without blocking on indexer watch
+  const makeCall = createUnprovenCallTx as unknown as (
+    providers: unknown,
+    options: unknown,
+  ) => Promise<{ private: { unprovenTx: unknown; nextPrivateState?: unknown } }>;
+
+  let unprovenCallTx: unknown;
+  let nextPrivateState: unknown;
+
   try {
-    const find = findDeployedContract as unknown as (
-      providers: unknown,
-      options: unknown,
-    ) => Promise<{ callTx: Record<string, (...args: unknown[]) => Promise<CallResult>> }>;
-    
-    const found = await find(session.providers, {
+    const unprovenData = await makeCall(session.providers, {
       compiledContract: makeCompiledContract(),
       contractAddress: cleanAddr,
+      circuitId: circuit,
+      args,
       privateStateId: PRIVATE_STATE_ID,
-      initialPrivateState: privateState,
     });
-    
-    const callFn = found.callTx[circuit];
-    if (typeof callFn !== "function") {
-      throw new Error(`Circuit "${circuit}" not found on deployed contract.`);
-    }
-    const result = await callFn(...args);
-    const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
-    if (txId) return String(txId).replace(/^0x/i, "");
-    return cleanAddr;
-  } catch {
-    // Fallback directly to circuit call tx interface with cleaned address
+    unprovenCallTx = unprovenData.private.unprovenTx;
+    nextPrivateState = unprovenData.private.nextPrivateState;
+  } catch (createErr) {
+    console.warn("[Aquas] createUnprovenCallTx fallback to circuit interface:", createErr);
+    // Fallback: try createCircuitCallTxInterface
     const createCalls = createCircuitCallTxInterface as unknown as (
       providers: unknown,
       compiledContract: unknown,
@@ -143,16 +145,37 @@ async function callContract(
       PRIVATE_STATE_ID,
     );
     
-    if (!circuitInterface[circuit]) {
-      throw new Error(`Circuit "${circuit}" is not found in the compiled contract.`);
+    if (typeof circuitInterface[circuit] === "function") {
+      const res = await circuitInterface[circuit](...args);
+      const txId = res?.public?.txId || res?.public?.transactionId || res?.txId;
+      return txId ? String(txId).replace(/^0x/i, "") : cleanAddr;
     }
-    
-    const result = await circuitInterface[circuit](...args);
-    const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
-    if (txId) return String(txId).replace(/^0x/i, "");
-    return cleanAddr;
+    throw createErr;
   }
+
+  // 2. Submit asynchronously: proveTx (1AM Proofstation) -> balanceTx (1AM approval popup) -> submitTx (on-chain)
+  // This opens the 1AM wallet popup for the user to approve!
+  const submitFn = submitTxAsync as unknown as (
+    providers: unknown,
+    options: { unprovenTx: unknown },
+  ) => Promise<unknown>;
+
+  const txResult = await submitFn(session.providers, {
+    unprovenTx: unprovenCallTx,
+  });
+
+  // 3. Save next private state if updated
+  if (nextPrivateState) {
+    await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, nextPrivateState);
+  }
+
+  const txId = typeof txResult === "string" && txResult.trim()
+    ? txResult.trim().replace(/^0x/i, "")
+    : (txResult as { transactionId?: string })?.transactionId?.replace(/^0x/i, "") || cleanAddr;
+
+  return txId;
 }
+
 
 export async function registerBoardOnChain(
   session: BrowserSession,
