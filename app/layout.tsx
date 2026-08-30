@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
+import { AuthProvider } from "@/context/auth-context";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -26,8 +28,6 @@ export const metadata: Metadata = {
   description: "Verify doctor license status without collecting personal files.",
 };
 
-import { AuthProvider } from "@/context/auth-context";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,8 +38,11 @@ export default function RootLayout({
       lang="en"
       className={`${bodyFont.variable} ${displayFont.variable} ${dataFont.variable}`}
     >
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className="bg-[#0a0a0a] text-white">
+        <AuthProvider>
+          {children}
+          <Toaster position="top-right" richColors theme="dark" />
+        </AuthProvider>
       </body>
     </html>
   );

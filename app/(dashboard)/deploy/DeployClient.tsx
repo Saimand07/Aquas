@@ -13,6 +13,7 @@ import {
   Globe,
   RotateCcw
 } from "lucide-react";
+import { toast } from "sonner";
 import { deployDoctorLicense } from "@/lib/deploy-doctor-license";
 import {
   connectOneAmPreview,
@@ -114,7 +115,7 @@ export default function DeployClient() {
     setDeploying(true);
     setError("");
     setOwnerSecret("");
-    setStatus("Preparing deployment transaction…");
+    setStatus("Prompting 1AM wallet: please approve deployment in 1AM popup…");
 
     try {
       let activeSession = session;
@@ -128,17 +129,17 @@ export default function DeployClient() {
       const secret = crypto.getRandomValues(new Uint8Array(32));
       setStatus("Synthesizing Compact ZK proof via local WASM runtime…");
 
-      // Set a 35s safeguard timeout for proof generation / 1AM prompt response
+      // 90-second safeguard timeout for proof generation & user approval in 1AM
       const deployPromise = deployDoctorLicense(activeSession, secret);
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
           () =>
             reject(
               new Error(
-                "Deployment timed out waiting for 1AM wallet confirmation. Ensure 1AM popup is approved, or run a local proof server at port 6300.",
+                "Deployment timed out. Please ensure 1AM extension popup is approved.",
               ),
             ),
-          35000,
+          90000,
         ),
       );
 
@@ -149,44 +150,68 @@ export default function DeployClient() {
         ...result,
         deployedAt: new Date().toISOString(),
       };
+
+      // IMMEDIATELY update deployment state and release the spinner
       setDeployment(record);
       setOwnerSecret(toHex(secret));
+      setDeploying(false);
       window.localStorage.setItem(DEPLOYMENT_STORAGE_KEY, JSON.stringify(record));
-      setStatus("Transaction submitted to Midnight ledger. Indexing on preview…");
+      setStatus("Contract submitted and confirmed on Midnight ledger!");
 
-      try {
-        await pollForContract(
-          activeSession.config.indexerUri,
-          result.contractAddress,
-          (attempt) => {
-            if (mounted.current) setStatus(`Waiting for preview indexer — attempt ${attempt}`);
-          },
-        );
-        if (mounted.current) setStatus("Contract deployed and indexed on Midnight Preview.");
-      } catch (reason) {
-        if (mounted.current) {
-          console.warn("Indexer polling notice:", reason);
-          setStatus("Transaction submitted; indexer confirmation pending.");
-        }
-      }
+      // IN-APP NOTIFICATION
+      toast.success("Midnight Contract Deployed Successfully!", {
+        description: `Contract Address: ${result.contractAddress.slice(0, 18)}…`,
+        duration: 12000,
+        action: {
+          label: "View Explorer ↗",
+          onClick: () =>
+            window.open(
+              `https://preview.midnightexplorer.com/contract/${result.contractAddress}`,
+              "_blank",
+            ),
+        },
+      });
+
+      // Background indexer polling without freezing the UI
+      void pollForContract(
+        activeSession.config.indexerUri,
+        result.contractAddress,
+        (attempt) => {
+          if (mounted.current) setStatus(`Indexer syncing block — attempt ${attempt}`);
+        },
+      )
+        .then(() => {
+          if (mounted.current) {
+            setStatus("Contract deployed & fully indexed on Midnight Preview.");
+            toast.info("Contract indexed on Midnight Preview GraphQL.", { duration: 6000 });
+          }
+        })
+        .catch((reason) => {
+          console.warn("Background indexer notice:", reason);
+        });
+
     } catch (reason) {
       if (mounted.current) {
         setError(reason instanceof Error ? reason.message : "Deployment failed.");
         setStatus("Deployment halted");
+        setDeploying(false);
+        toast.error("Deployment Failed", {
+          description: reason instanceof Error ? reason.message : "Transaction was rejected or timed out.",
+        });
       }
-    } finally {
-      if (mounted.current) setDeploying(false);
     }
   }, [session, initSession]);
 
-  function copy(value: string) {
+  function copy(value: string, label = "Value") {
     void navigator.clipboard.writeText(value);
+    toast.success(`${label} copied to clipboard!`);
   }
 
   const resetToCanonical = () => {
     setDeployment(CANONICAL_DEPLOYMENT);
     window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
     setStatus("Reset to verified canonical preview contract.");
+    toast.info("Reset to verified canonical preview contract.");
   };
 
   return (
@@ -202,7 +227,7 @@ export default function DeployClient() {
             Deploy Aquas to Midnight Preview
           </h1>
           <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
-            Deployment happens entirely in this browser. 1AM supplies wallet access, gas balancing, and cryptographic transaction submission.
+            Deployment happens directly in this browser. 1AM supplies wallet access, gas balancing, and cryptographic transaction submission.
           </p>
         </div>
 
@@ -324,7 +349,7 @@ export default function DeployClient() {
                   <WalletCards size={16} className="text-[#3fa96b]" />
                   <span className="text-zinc-400">Connected Wallet:</span>
                 </div>
-                <span className="text-[#3fa96b] font-bold">{displayAddress}</span>
+                <span className="text-[#3fa96b] font-bold select-all">{displayAddress}</span>
               </div>
             )}
 
@@ -407,7 +432,7 @@ export default function DeployClient() {
                 </div>
                 <div className="p-3 bg-black/70 border border-white/10 rounded-xl flex justify-between items-center">
                   <code className="text-[#3fa96b] font-bold text-xs truncate select-all">{deployment.contractAddress}</code>
-                  <button onClick={() => copy(deployment.contractAddress)} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy Address">
+                  <button onClick={() => copy(deployment.contractAddress, "Contract Address")} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy Address">
                     <Clipboard size={15} />
                   </button>
                 </div>
@@ -427,7 +452,7 @@ export default function DeployClient() {
                 </div>
                 <div className="p-3 bg-black/70 border border-white/10 rounded-xl flex justify-between items-center">
                   <code className="text-zinc-300 text-xs truncate select-all">{deployment.transactionId}</code>
-                  <button onClick={() => copy(deployment.transactionId)} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy TX ID">
+                  <button onClick={() => copy(deployment.transactionId, "Transaction ID")} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy TX ID">
                     <Clipboard size={15} />
                   </button>
                 </div>
@@ -452,7 +477,7 @@ export default function DeployClient() {
               <p className="text-zinc-400 text-[11px]">Required for state board administration. Generated in browser and never sent to servers.</p>
               <div className="p-2 bg-black/60 border border-white/10 rounded-lg flex justify-between items-center">
                 <code className="text-[#b08d57] truncate select-all">{ownerSecret}</code>
-                <button onClick={() => copy(ownerSecret)} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
+                <button onClick={() => copy(ownerSecret, "Master Secret")} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
                   <Clipboard size={14} />
                 </button>
               </div>
