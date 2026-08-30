@@ -63,8 +63,14 @@ export default function CircuitCallWorkbench() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form inputs
-  // credentialId starts empty — it is COMPUTED from boardSecret+metadata. User must generate it or paste a real one.
-  const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL_ID);
+  // credentialId is initialized from the last on-chain created license if available, or sample ID
+  const [credentialId, setCredentialId] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("aquas_last_credential_id");
+      if (saved) return saved;
+    }
+    return SAMPLE_CREDENTIAL_ID;
+  });
   const [boardSecret, setBoardSecret] = useState(SAMPLE_BOARD_SECRET);
   const [customOwnerSecret, setCustomOwnerSecret] = useState<string | null>(null);
 
@@ -72,12 +78,22 @@ export default function CircuitCallWorkbench() {
   const ownerSecret = customOwnerSecret ?? storedOwnerSecret ?? SAMPLE_OWNER_SECRET;
   const setOwnerSecret = (val: string) => setCustomOwnerSecret(val);
 
-
   // Stored private credential for the proveValidLicense circuit (generated alongside credentialId)
-  const [storedPrivateCredential, setStoredPrivateCredential] = useState<import("@/lib/doctor-license-client").PrivateCredential | null>(null);
+  const [storedPrivateCredential, setStoredPrivateCredential] = useState<import("@/lib/doctor-license-client").PrivateCredential | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("aquas_last_private_credential");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
 
   const isWalletConnected = Boolean(wallet.connected || (isAuthenticated && authType === "wallet"));
-
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -100,10 +116,14 @@ export default function CircuitCallWorkbench() {
       });
       setCredentialId(newId);
       setStoredPrivateCredential(privateCredential);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("aquas_last_credential_id", newId);
+        window.localStorage.setItem("aquas_last_private_credential", JSON.stringify(privateCredential));
+      }
       setLogs((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString()}] Generated credential commitment: ${newId}`,
-        `[${new Date().toLocaleTimeString()}] Private credential stored in-session. Ready to prove.`,
+        `[${new Date().toLocaleTimeString()}] Generated fresh credential commitment: ${newId}`,
+        `[${new Date().toLocaleTimeString()}] Private credential witness stored in-session. Ready to issue (Step 2) or prove (Step 3).`,
       ]);
       toast.success("Credential ID Generated", {
         description: `Commitment: ${newId.slice(0, 20)}…`,
@@ -113,6 +133,7 @@ export default function CircuitCallWorkbench() {
       setErrorMsg(msg);
     }
   };
+
 
   const handleExecuteCircuit = async () => {
     setExecuting(true);
@@ -193,7 +214,7 @@ export default function CircuitCallWorkbench() {
         });
       } else if (selectedCircuit === "createLicense") {
         addLog("Generating SHA-256 + Pedersen license commitment…");
-        const { credentialId: newId } = await createPrivateCredential(boardSecret, {
+        const { credentialId: newId, privateCredential: newPrivateCredential } = await createPrivateCredential(boardSecret, {
           doctorName: "Dr. Marcus Chen, MD",
           licenseNumber: "MD-CA-99201",
           board: "California Medical Board",
@@ -208,10 +229,23 @@ export default function CircuitCallWorkbench() {
 
         tx = await issueLicenseOnChain(sess, contractAddress, boardSecret, newId, now, expiry);
         setTxHash(tx);
+        setCredentialId(newId);
+        setStoredPrivateCredential(newPrivateCredential);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("aquas_last_credential_id", newId);
+          window.localStorage.setItem("aquas_last_private_credential", JSON.stringify(newPrivateCredential));
+        }
+
         addLog(`✓ createLicense Confirmed on ${netConfig.badge}!`);
-        addLog(`Transaction Hash: ${tx}`);
+        addLog(`----------------------------------------------------`);
+        addLog(`🔑 Issued Credential ID: ${newId}`);
+        addLog(`📝 Transaction Hash: ${tx}`);
+        addLog(`----------------------------------------------------`);
+        addLog(`👉 Active Credential ID updated to: ${newId.slice(0, 16)}…`);
+        addLog(`👉 Ready for Step 3: Switch to "proveValidLicense" (STEP 3) and click Execute!`);
+
         toast.success(`Medical License Committed to ${netConfig.badge} Ledger!`, {
-          description: `Transaction: ${tx.slice(0, 18)}…`,
+          description: `Credential ID: ${newId.slice(0, 18)}…`,
           action: {
             label: "View on Explorer ↗",
             onClick: () => window.open(getExplorerTxUrl(tx, currentNetwork), "_blank"),
@@ -261,14 +295,17 @@ export default function CircuitCallWorkbench() {
       } else if (msg.includes("issuing board is no longer trusted") || msg.includes("board is not trusted") || msg.includes("board not found")) {
         msg = "Medical Board not registered on this contract yet. Please execute Step 1 (createBoard) first to register the board authority, then Step 2 (createLicense) before proving.";
       } else if (msg.includes("license not found")) {
-        msg = "License credential ID not found on-chain. Please execute Step 2 (createLicense) first to commit the license to the ledger.";
+        msg = `License credential ID (${credentialId ? credentialId.slice(0, 12) + "…" : "empty"}) was not found on this contract. Note: Make sure to use the 64-hex Credential Commitment ID generated during Step 2 (createLicense), and NOT the transaction hash (which was shown on 1AM explorer).`;
       } else if (msg.includes("license revoked")) {
         msg = "This license has been revoked on-chain and can no longer be proven.";
+      } else if (msg.includes("private credential does not match ID")) {
+        msg = "Private witness vector does not match the specified Credential ID. Please click '⚡ Generate Fresh Secret' or execute Step 2 (createLicense) to generate a synchronized witness.";
       }
       setErrorMsg(msg);
       addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Notice: ${msg}`);
       toast.error(`Circuit Action Required`, { description: msg, duration: 9000 });
     } finally {
+
 
       setExecuting(false);
     }
@@ -398,35 +435,46 @@ export default function CircuitCallWorkbench() {
                   className="w-full p-2.5 bg-black/60 border border-white/10 rounded-lg text-zinc-400 font-mono text-xs focus:outline-none focus:border-[#b08d57]"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-zinc-400 text-[11px]">Credential Commitment ID (Hex):</label>
+                  <label className="text-zinc-400 text-[11px] font-semibold">Credential Commitment ID (Hex):</label>
                   <button
+                    type="button"
                     onClick={handleGenerateCredential}
                     className="text-[10px] px-2 py-1 rounded-lg bg-[#b08d57]/15 border border-[#b08d57]/30 text-[#b08d57] hover:bg-[#b08d57]/30 transition-colors cursor-pointer font-bold"
-                    title="Compute the credential commitment ID from the Board Secret above"
+                    title="Generate a fresh private credential commitment from the Board Secret above"
                   >
-                    ⚡ Generate from Secret
+                    ⚡ Generate Fresh Secret
                   </button>
                 </div>
                 {!credentialId && (
                   <p className="text-amber-400/70 text-[10px] font-mono">
-                    ⚠ No commitment ID. Click &quot;Generate from Secret&quot; above or paste a real credential ID.
+                    ⚠ No commitment ID. Execute Step 2 (createLicense) or click &quot;Generate Fresh Secret&quot; above.
                   </p>
                 )}
                 <input
                   type="text"
                   value={credentialId}
-                  onChange={(e) => { setCredentialId(e.target.value); setStoredPrivateCredential(null); }}
-                  placeholder="Click 'Generate from Secret' to compute the commitment ID…"
+                  onChange={(e) => {
+                    const clean = e.target.value.trim();
+                    setCredentialId(clean);
+                  }}
+                  placeholder="e.g. 64-hex Credential Commitment ID from Step 2…"
                   className="w-full p-2.5 bg-black/60 border border-white/10 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#b08d57] placeholder:text-zinc-600"
                 />
-                {storedPrivateCredential && (
-                  <p className="text-[#3fa96b] text-[10px] font-mono">
-                    ✓ Private credential stored in-session. Commitment matches. Ready to prove.
-                  </p>
-                )}
+                <div className="flex flex-col gap-1 pt-0.5">
+                  {storedPrivateCredential ? (
+                    <p className="text-[#3fa96b] text-[10px] font-mono flex items-center gap-1">
+                      <span>✓</span> Private witness state loaded from Step 2. Ready to generate ZK proof.
+                    </p>
+                  ) : (
+                    <p className="text-zinc-500 text-[10px] font-mono">
+                      💡 <b>Tip:</b> Enter the 64-character <b>Credential Commitment ID</b> (from Step 2), <i>not</i> the 1AM Explorer transaction hash.
+                    </p>
+                  )}
+                </div>
               </div>
+
             </>
           )}
 
