@@ -11,8 +11,12 @@ import {
   RotateCcw,
   Award,
   FileCheck2,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  Server,
+  CheckCircle2
 } from "lucide-react";
+import { toast } from "sonner";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -38,14 +42,18 @@ export default function CircuitCallWorkbench() {
   const [executing, setExecuting] = useState(false);
   const [logs, setLogs] = useState<string[]>([
     "Midnight Compact Circuit Runtime 0.16.0 initialized.",
-    "Select a circuit above and click 'Hit Circuit Call' to execute live on-chain.",
+    "Prover: 1AM Proofstation (https://api-preview.1am.xyz)",
+    "Ready to execute live on-chain circuits against Midnight Preview.",
   ]);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form inputs
   const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL_ID);
   const [boardSecret, setBoardSecret] = useState(SAMPLE_BOARD_SECRET);
   const [ownerSecret, setOwnerSecret] = useState(SAMPLE_OWNER_SECRET);
+
+  const isWalletConnected = Boolean(wallet.connected || (auth.isAuthenticated && auth.authType === "wallet"));
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -55,20 +63,37 @@ export default function CircuitCallWorkbench() {
   const handleExecuteCircuit = async () => {
     setExecuting(true);
     setTxHash(null);
-    setLogs([`Initiating circuit call: ${selectedCircuit}...`]);
+    setErrorMsg(null);
+    setLogs([`Initiating live circuit call: ${selectedCircuit}...`]);
 
     const contractAddress =
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
       "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
 
+    if (!isWalletConnected) {
+      addLog("[ERROR] 1AM Wallet is not connected.");
+      addLog("Please connect your 1AM wallet in the topbar to sign on-chain transactions via 1AM Proofstation.");
+      setErrorMsg("1AM Wallet connection required. Please connect your wallet in the navigation header.");
+      toast.error("1AM Wallet Required", {
+        description: "Please connect your 1AM wallet in the top navigation header.",
+      });
+      setExecuting(false);
+      return;
+    }
+
     try {
-      addLog(`Target Contract: ${contractAddress.slice(0, 18)}…`);
-      addLog("Step 1/4: Assembling private witnesses and arithmetic constraints…");
+      addLog(`Target Contract: ${contractAddress}`);
+      addLog("Step 1/4: Connecting to 1AM Prover Provider & Loading Proving Keys…");
+
+      const sess = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
+      addLog(`Connected to 1AM wallet: ${sess.unshieldedAddress.slice(0, 16)}…`);
+      addLog("Step 2/4: Assembling private witness vector…");
+
+      let tx: string;
 
       if (selectedCircuit === "proveValidLicense") {
-        addLog("Compiling witness: { credentialPayload, credentialNonce, boardKey, doctorSecret }");
-        addLog("Step 2/4: Executing local WASM prover for doctor_license.compact…");
-        await new Promise((r) => setTimeout(r, 600));
+        addLog("Evaluating witness: { credentialPayload, credentialNonce, boardKey, doctorSecret }");
+        addLog("Step 3/4: Requesting 1AM Proofstation to compute Halo2 SNARK proof…");
 
         const { privateCredential } = await createPrivateCredential(boardSecret, {
           doctorName: "Dr. Sarah Lin, MD",
@@ -76,112 +101,88 @@ export default function CircuitCallWorkbench() {
           board: "New York Medical Board",
         });
 
-        addLog("Step 3/4: Halo2/Plonk SNARK proof synthesized (0 bytes PII exposed).");
-        addLog("Step 4/4: Transmitting unproven proof transaction to Midnight Preview…");
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        addLog("Step 4/4: Submitting proof to Midnight Preview (wss://rpc.preview.midnight.network)…");
 
-        if (wallet.connected || auth.authType === "wallet") {
-          try {
-            const sess = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
-            const challenge = crypto.getRandomValues(new Uint8Array(32));
-            const tx = await proveLicenseOnChain(
-              sess,
-              contractAddress,
-              privateCredential,
-              credentialId.replace(/^0x/, ""),
-              challenge
-            );
-            setTxHash(tx);
-            addLog(`✓ Circuit Settled on Midnight Ledger! Tx: ${tx}`);
-          } catch {
-            const fallbackTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-            setTxHash(fallbackTx);
-            addLog(`✓ Circuit Prover Executed. Nullifier verified. Reference Tx: ${fallbackTx}`);
-          }
-        } else {
-          const simulatedTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-          setTxHash(simulatedTx);
-          addLog(`✓ Local ZK Prover Verified Constraint: H(payload, nonce, boardKey) == Commitment`);
-          addLog(`✓ Settlement Hash Generated: ${simulatedTx}`);
-        }
+        tx = await proveLicenseOnChain(
+          sess,
+          contractAddress,
+          privateCredential,
+          credentialId.replace(/^0x/, ""),
+          challenge
+        );
+
+        setTxHash(tx);
+        addLog(`✓ Circuit Execution Confirmed! Transaction ID: ${tx}`);
+        toast.success("Zero-Knowledge Proof Verified On-Chain!", {
+          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          action: {
+            label: "Explorer ↗",
+            onClick: () => window.open(`https://preview.midnightexplorer.com/tx/${tx}`, "_blank"),
+          },
+        });
       } else if (selectedCircuit === "createLicense") {
-        addLog("Step 2/4: Generating SHA-256 + Pedersen license commitment…");
+        addLog("Generating SHA-256 + Pedersen license commitment…");
         const { credentialId: newId } = await createPrivateCredential(boardSecret, {
           doctorName: "Dr. Marcus Chen, MD",
           licenseNumber: "MD-CA-99201",
           board: "California Medical Board",
         });
-        addLog(`Generated on-chain commitment ID: ${newId.slice(0, 18)}…`);
-        addLog("Step 3/4: Asserting Board Authorization signature in circuit…");
-        await new Promise((r) => setTimeout(r, 500));
-        addLog("Step 4/4: Submitting createLicense state transition to Midnight…");
+        addLog(`Computed on-chain commitment ID: ${newId}`);
+        addLog("Step 3/4: Synthesizing ZK proof via 1AM Proofstation…");
 
-        if (wallet.connected || auth.authType === "wallet") {
-          try {
-            const sess = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
-            const now = BigInt(Math.floor(Date.now() / 1000));
-            const expiry = now + BigInt(86400 * 365 * 3);
-            const tx = await issueLicenseOnChain(sess, contractAddress, boardSecret, newId, now, expiry);
-            setTxHash(tx);
-            addLog(`✓ createLicense Confirmed! On-Chain Tx: ${tx}`);
-          } catch {
-            const fallbackTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-            setTxHash(fallbackTx);
-            addLog(`✓ State Commitment Inserted into issuedLicenses map. Ref Tx: ${fallbackTx}`);
-          }
-        } else {
-          const simulatedTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-          setTxHash(simulatedTx);
-          addLog(`✓ Commitment Registered to Compact Ledger. Ref Tx: ${simulatedTx}`);
-        }
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        const expiry = now + BigInt(86400 * 365 * 3);
+        addLog("Step 4/4: Submitting createLicense transition to Midnight Preview ledger…");
+
+        tx = await issueLicenseOnChain(sess, contractAddress, boardSecret, newId, now, expiry);
+        setTxHash(tx);
+        addLog(`✓ createLicense Confirmed! Transaction ID: ${tx}`);
+        toast.success("Medical License Committed to Midnight Ledger!", {
+          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          action: {
+            label: "Explorer ↗",
+            onClick: () => window.open(`https://preview.midnightexplorer.com/tx/${tx}`, "_blank"),
+          },
+        });
       } else if (selectedCircuit === "createBoard") {
-        addLog("Step 2/4: Deriving Board Public Key & Authorization Vector…");
+        addLog("Deriving Board Public Key & Authorization Vector…");
         const { key } = deriveBoardIdentity(boardSecret);
-        addLog(`Board Public Key: ${toHex(key).slice(0, 18)}…`);
-        addLog("Step 3/4: Asserting Owner Authorization proof…");
-        await new Promise((r) => setTimeout(r, 400));
-        addLog("Step 4/4: Adding Board Key to trustedBoards Set…");
+        addLog(`Board Public Key: ${toHex(key)}`);
+        addLog("Step 3/4: Synthesizing Board Authorization proof via 1AM Proofstation…");
+        addLog("Step 4/4: Transmitting state update to trustedBoards Set…");
 
-        if (wallet.connected || auth.authType === "wallet") {
-          try {
-            const sess = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
-            const tx = await registerBoardOnChain(sess, contractAddress, ownerSecret, boardSecret);
-            setTxHash(tx);
-            addLog(`✓ createBoard Confirmed! On-Chain Tx: ${tx}`);
-          } catch {
-            const fallbackTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-            setTxHash(fallbackTx);
-            addLog(`✓ State Board Key Added to Governance Set. Ref Tx: ${fallbackTx}`);
-          }
-        } else {
-          const simulatedTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-          setTxHash(simulatedTx);
-          addLog(`✓ Board Registered. Ref Tx: ${simulatedTx}`);
-        }
+        tx = await registerBoardOnChain(sess, contractAddress, ownerSecret, boardSecret);
+        setTxHash(tx);
+        addLog(`✓ createBoard Confirmed! Transaction ID: ${tx}`);
+        toast.success("State Medical Board Registered On-Chain!", {
+          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          action: {
+            label: "Explorer ↗",
+            onClick: () => window.open(`https://preview.midnightexplorer.com/tx/${tx}`, "_blank"),
+          },
+        });
       } else if (selectedCircuit === "deleteLicense") {
-        addLog("Step 2/4: Verifying Board Signing Secret for Revocation…");
-        addLog(`Step 3/4: Moving Credential ${credentialId.slice(0, 16)}… to revokedLicenses Set…`);
-        await new Promise((r) => setTimeout(r, 400));
-        addLog("Step 4/4: Updating Compact Ledger State…");
+        addLog(`Preparing license revocation for: ${credentialId}`);
+        addLog("Step 3/4: Proving board signing authority via 1AM Proofstation…");
+        addLog("Step 4/4: Moving credential to revokedLicenses Set…");
 
-        if (wallet.connected || auth.authType === "wallet") {
-          try {
-            const sess = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
-            const tx = await revokeLicenseOnChain(sess, contractAddress, boardSecret, credentialId.replace(/^0x/, ""));
-            setTxHash(tx);
-            addLog(`✓ deleteLicense Confirmed! On-Chain Tx: ${tx}`);
-          } catch {
-            const fallbackTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-            setTxHash(fallbackTx);
-            addLog(`✓ Revocation Flag Written to On-Chain State. Ref Tx: ${fallbackTx}`);
-          }
-        } else {
-          const simulatedTx = "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
-          setTxHash(simulatedTx);
-          addLog(`✓ Revocation Nullifier Stored. Ref Tx: ${simulatedTx}`);
-        }
+        tx = await revokeLicenseOnChain(sess, contractAddress, boardSecret, credentialId.replace(/^0x/, ""));
+        setTxHash(tx);
+        addLog(`✓ deleteLicense Confirmed! Transaction ID: ${tx}`);
+        toast.success("License Nullified On-Chain!", {
+          description: `Transaction ID: ${tx.slice(0, 18)}…`,
+          action: {
+            label: "Explorer ↗",
+            onClick: () => window.open(`https://preview.midnightexplorer.com/tx/${tx}`, "_blank"),
+          },
+        });
       }
     } catch (err) {
-      addLog(`[ERROR] Circuit execution failed: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      addLog(`[ERROR] 1AM Proofstation / Ledger Error: ${msg}`);
+      toast.error("Circuit Execution Failed", { description: msg });
     } finally {
       setExecuting(false);
     }
@@ -194,13 +195,14 @@ export default function CircuitCallWorkbench() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#b08d57]/10 border border-[#b08d57]/20 text-xs font-mono text-[#b08d57] mb-2 font-semibold">
             <Code2 size={14} />
-            <span>COMPACT 0.16.0 INTERACTIVE CIRCUIT RUNTIME</span>
+            <span>COMPACT 0.16.0 LIVE PROVING RUNTIME</span>
           </div>
           <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
             Execute On-Chain Compact Circuits
           </h2>
-          <p className="text-zinc-400 text-xs font-mono mt-1">
-            Trigger ZK proving, commitment registration, governance, and revocation circuits live against Midnight Preview.
+          <p className="text-zinc-400 text-xs font-mono mt-1 flex items-center gap-2">
+            <Server size={12} className="text-[#3fa96b]" />
+            <span>Connected to 1AM Proofstation (Hosted SNARK Proving + Zero Gas Sponsorship)</span>
           </p>
         </div>
 
@@ -208,6 +210,7 @@ export default function CircuitCallWorkbench() {
           onClick={() => {
             setLogs(["Console cleared. Select a circuit to execute."]);
             setTxHash(null);
+            setErrorMsg(null);
           }}
           className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
           title="Clear Console"
@@ -252,6 +255,7 @@ export default function CircuitCallWorkbench() {
               onClick={() => {
                 setSelectedCircuit(c.id as CircuitType);
                 setTxHash(null);
+                setErrorMsg(null);
               }}
               style={{
                 background: isSelected ? "rgba(176, 141, 87, 0.15)" : "rgba(255, 255, 255, 0.02)",
@@ -277,7 +281,10 @@ export default function CircuitCallWorkbench() {
         <div className="lg:col-span-6 space-y-4 bg-white/[0.02] border border-white/10 rounded-2xl p-5 font-mono text-xs">
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <span className="text-zinc-400 font-bold uppercase text-[10px] tracking-wider">Circuit Parameters</span>
-            <span className="text-[#3fa96b] text-[10px]">WASM Compatible</span>
+            <span className="text-[#3fa96b] text-[10px] flex items-center gap-1">
+              <CheckCircle2 size={11} />
+              <span>1AM Proofstation Ready</span>
+            </span>
           </div>
 
           {selectedCircuit === "proveValidLicense" && (
@@ -379,12 +386,12 @@ export default function CircuitCallWorkbench() {
             {executing ? (
               <>
                 <LoaderCircle className="animate-spin text-black" size={16} />
-                <span>Proving &amp; Executing Circuit…</span>
+                <span>1AM Proofstation Generating ZK-SNARK…</span>
               </>
             ) : (
               <>
                 <Play size={16} className="text-black fill-current" />
-                <span>⚡ Hit Circuit Call ({selectedCircuit})</span>
+                <span>⚡ Execute Live On-Chain Circuit ({selectedCircuit})</span>
               </>
             )}
           </button>
@@ -395,12 +402,12 @@ export default function CircuitCallWorkbench() {
           <div>
             <div className="flex items-center gap-2 text-zinc-400 border-b border-white/10 pb-2 mb-3">
               <Terminal size={14} className="text-[#3fa96b]" />
-              <span className="font-bold text-[11px] text-zinc-300">Circuit Terminal Output</span>
+              <span className="font-bold text-[11px] text-zinc-300">1AM Proofstation Circuit Terminal</span>
             </div>
 
-            <div className="space-y-1.5 max-h-[160px] overflow-y-auto text-[11px]">
+            <div className="space-y-1.5 max-h-[170px] overflow-y-auto text-[11px]">
               {logs.map((l, i) => (
-                <div key={i} className={l.startsWith("✓") ? "text-[#3fa96b]" : l.startsWith("[ERROR]") ? "text-red-400" : "text-zinc-300"}>
+                <div key={i} className={l.startsWith("✓") ? "text-[#3fa96b] font-bold" : l.startsWith("[ERROR]") ? "text-red-400 font-bold" : "text-zinc-300"}>
                   {l}
                 </div>
               ))}
@@ -409,9 +416,9 @@ export default function CircuitCallWorkbench() {
 
           {txHash && (
             <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-[#3fa96b]/10 p-2.5 rounded-xl border border-[#3fa96b]/20">
-              <span className="text-[#3fa96b] text-[11px] font-bold truncate">Settlement: {txHash.slice(0, 16)}…</span>
+              <span className="text-[#3fa96b] text-[11px] font-bold truncate">Settlement TX: {txHash}</span>
               <a
-                href={`https://preview.midnightexplorer.com/contract/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74"}`}
+                href={`https://preview.midnightexplorer.com/tx/${txHash}`}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -424,6 +431,13 @@ export default function CircuitCallWorkbench() {
                 <span>Verify on Explorer</span>
                 <ExternalLink size={10} />
               </a>
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[11px] flex items-start gap-2">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>{errorMsg}</span>
             </div>
           )}
         </div>

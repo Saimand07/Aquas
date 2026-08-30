@@ -1,6 +1,9 @@
 "use client";
 
-import { createCircuitCallTxInterface } from "@midnight-ntwrk/midnight-js-contracts";
+import {
+  createCircuitCallTxInterface,
+  findDeployedContract
+} from "@midnight-ntwrk/midnight-js-contracts";
 import { Contract } from "../contracts/managed/doctor_license/contract/index.js";
 import {
   createInitialPrivateState,
@@ -24,7 +27,7 @@ type ContractInternals = {
   _licenseCommitment_0(payload: Uint8Array, nonce: Uint8Array, issuer: Uint8Array): Uint8Array;
 };
 
-type CallResult = { public?: { txId?: string } };
+type CallResult = { public?: { txId?: string; transactionId?: string }; txId?: string };
 type CallInterface = Record<string, (...args: unknown[]) => Promise<CallResult>>;
 
 function exactBytes(value: string, label: string): Uint8Array {
@@ -88,19 +91,48 @@ async function callContract(
 ): Promise<string> {
   session.providers.privateStateProvider.setContractAddress(contractAddress);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, privateState);
-  const createCalls = createCircuitCallTxInterface as unknown as (
-    providers: unknown,
-    compiledContract: unknown,
-    address: string,
-    privateStateId: string,
-  ) => CallInterface;
-  const result = await createCalls(
-    session.providers,
-    makeCompiledContract(),
-    contractAddress,
-    PRIVATE_STATE_ID,
-  )[circuit](...args);
-  return result.public?.txId ?? "submitted";
+
+  try {
+    const find = findDeployedContract as unknown as (
+      providers: unknown,
+      options: unknown,
+    ) => Promise<{ callTx: Record<string, (...args: unknown[]) => Promise<CallResult>> }>;
+    const found = await find(session.providers, {
+      compiledContract: makeCompiledContract(),
+      contractAddress,
+      privateStateId: PRIVATE_STATE_ID,
+      initialPrivateState: privateState,
+    });
+    const callFn = found.callTx[circuit];
+    if (typeof callFn !== "function") {
+      throw new Error(`Circuit "${circuit}" not found on deployed contract.`);
+    }
+    const result = await callFn(...args);
+    const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
+    if (txId) return String(txId);
+    return "submitted";
+  } catch {
+    // Fallback directly to circuit call tx interface
+    const createCalls = createCircuitCallTxInterface as unknown as (
+      providers: unknown,
+      compiledContract: unknown,
+      address: string,
+      privateStateId: string,
+    ) => CallInterface;
+    const circuitInterface = createCalls(
+      session.providers,
+      makeCompiledContract(),
+      contractAddress,
+      PRIVATE_STATE_ID,
+    );
+    if (!circuitInterface[circuit]) {
+      throw new Error(`Circuit "${circuit}" is not found in the compiled contract.`);
+    }
+    const result = await circuitInterface[circuit](...args);
+    const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
+    if (txId) return String(txId);
+    return "submitted";
+  }
 }
 
 export async function registerBoardOnChain(
