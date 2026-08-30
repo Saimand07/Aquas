@@ -57,8 +57,14 @@ export default function DeployClient() {
     const saved = window.localStorage.getItem(DEPLOYMENT_STORAGE_KEY);
     if (!saved) return CANONICAL_DEPLOYMENT;
     try {
-      return JSON.parse(saved) as DeploymentRecord;
+      const parsed = JSON.parse(saved) as DeploymentRecord;
+      if (!parsed.contractAddress || parsed.contractAddress.includes("2459ebb")) {
+        window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
+        return CANONICAL_DEPLOYMENT;
+      }
+      return parsed;
     } catch {
+      window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
       return CANONICAL_DEPLOYMENT;
     }
   });
