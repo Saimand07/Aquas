@@ -20,31 +20,16 @@
   [![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](#)
 </div>
 
-> **Live Application:** [https://license-seal-sigma.vercel.app/](https://license-seal-sigma.vercel.app/)  
-> **Product Proposal & Specification:** [Read Approved Idea Proposal (proposals.md)](./proposals.md)  
-> **GitHub Repository:** [https://github.com/Saimand07/Aquas](https://github.com/Saimand07/Aquas)  
-> **Continuous Integration:** [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
-
----
-
-## Submission Checklist & Requirements Audit
-
-| Requirement | Status | Verification Details & Links |
-| :--- | :---: | :--- |
-| **Fully functional dApp using Midnight privacy model** | **PASS** | Live Next.js 16 + React 19 dApp with native Compact smart contract (`contracts/doctor_license.compact`), client-side WASM proving runtime, and 1AM wallet connector. |
-| **Minimum 3 tests passing** | **PASS** | **44 automated Vitest tests passing across 9 test suites** (contract logic, batch verifier, FHIR R4 adapter, telemetry, selective disclosure, offline pass, webhooks). |
-| **CI/CD pipeline running** | **PASS** | Automated GitHub Actions CI workflow ([`.github/workflows/CI.yml`](./.github/workflows/CI.yml)) passing on every push and PR for typecheck, lint, test, and production build. |
-| **Approved idea from provided idea list** | **PASS** | **Level 3: Confidential Credentials** (Medical License Registry proving validity without disclosing PII) — documented in [`proposals.md`](./proposals.md). |
-| **Minimum 10 meaningful commits** | **PASS** | **38+ structured commits** on `main` branch tracking incremental smart contract architecture, proving workflows, UI components, and enterprise gateways. |
-| **Complete README with Privacy Model** | **PASS** | Comprehensive README with architecture diagrams, sequence flows, tech stack, and explicit **"What an Observer Can and Cannot Learn"** section. |
-| **Live demo link** | **PASS** | [https://license-seal-sigma.vercel.app/](https://license-seal-sigma.vercel.app/) |
-| **Screenshot: test output (3+ tests passing)** | **PASS** | High-definition screenshot embedded showing all 44/44 unit and ZK prover tests passing ([View Test Screenshot](#11-comprehensive-vitest-test-suite)). |
-| **CI/CD badge with passing runs** | **PASS** | Active GitHub Actions CI badge displayed at top of README ([View CI Workflow](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)). |
-| **Demo video showing full functionality** | **PASS** | [Watch 1-Minute Full Functionality Demo Video ↗](https://license-seal-sigma.vercel.app/) |
+> 🎬 **Demo Video:** [https://youtu.be/WOtCmrVp94g](https://youtu.be/WOtCmrVp94g)  
+> 🌐 **Live Application:** [https://license-seal-sigma.vercel.app/](https://license-seal-sigma.vercel.app/)  
+> 📄 **Product Proposal & Specification:** [Read Approved Idea Proposal (proposals.md)](./proposals.md)  
+> 💻 **GitHub Repository:** [https://github.com/Saimand07/Aquas](https://github.com/Saimand07/Aquas)  
+> ⚡ **Continuous Integration:** [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
 
 ---
 
 ## Approved Product Proposal: Confidential Credentials
+
 
 * **Track:** Level 3 Proposal — Confidential Credentials
 * **Core Principle:** Prove a medical credential is valid, unexpired, and issued by an accredited medical board without disclosing the underlying credential secrets or doctor PII.
