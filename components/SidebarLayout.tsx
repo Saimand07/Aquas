@@ -168,6 +168,24 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               <UserCheck size={14} className="text-[#3fa96b]" />
               <span>{connectedAddressLabel}</span>
             </div>
+
+            <button
+              onClick={() => {
+                signOut();
+                router.push('/');
+              }}
+              style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                color: "#f87171",
+                border: "1px solid rgba(239, 68, 68, 0.25)",
+                fontWeight: 600
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-mono flex items-center gap-1.5 hover:bg-red-500/20 transition-colors cursor-pointer"
+              title="Disconnect Wallet and End Session"
+            >
+              <Unplug size={13} />
+              <span>Disconnect</span>
+            </button>
           </div>
         </header>
 

@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsConnecting(false);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to connect 1AM wallet. Ensure 1AM extension is installed.";
+      const msg = err instanceof Error ? err.message : "Failed to connect 1AM wallet. Ensure 1AM extension is installed and preview network selected.";
       setError(msg);
       setIsConnecting(false);
       return false;
@@ -135,6 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(() => {
     saveSession(false, null, null, null);
     setError(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("midnight-wallet-disconnect"));
+    }
   }, [saveSession]);
 
   return (
