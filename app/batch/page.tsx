@@ -79,7 +79,8 @@ export default function BatchVerificationPage() {
           <small>MEDICAL REGISTRY</small>
         </Link>
         <nav aria-label="Primary navigation">
-          <Link href="/">Verify</Link>
+          <Link href="/">Home</Link>
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/batch" className="active">Batch Verifier</Link>
           <Link href="/explorer">Explorer</Link>
           <Link href="/ehr">EHR Gateway</Link>

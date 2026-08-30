@@ -55,7 +55,8 @@ export default function PhysicianPassPage() {
           <small>MEDICAL REGISTRY</small>
         </Link>
         <nav aria-label="Primary navigation">
-          <Link href="/">Verify</Link>
+          <Link href="/">Home</Link>
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/batch">Batch Verifier</Link>
           <Link href="/explorer">Explorer</Link>
           <Link href="/ehr">EHR Gateway</Link>

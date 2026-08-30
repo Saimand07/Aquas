@@ -137,7 +137,7 @@ export default function DeployClient() {
           <span>Aquas</span>
           <small>MD</small>
         </Link>
-        <Link className="back-link" href="/"><ArrowLeft size={15} />Back to app</Link>
+        <Link className="back-link" href="/dashboard"><ArrowLeft size={15} />Back to dashboard</Link>
       </header>
 
       <section className="deploy-stage">

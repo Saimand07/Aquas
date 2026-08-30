@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import {
@@ -40,10 +40,12 @@ export default function EhrGatewayPage() {
           <small>MEDICAL REGISTRY</small>
         </Link>
         <nav aria-label="Primary navigation">
-          <Link href="/">Verify</Link>
+          <Link href="/">Home</Link>
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/batch">Batch Verifier</Link>
           <Link href="/explorer">Explorer</Link>
           <Link href="/ehr" className="active">EHR Gateway</Link>
+          <Link href="/pass">Physician Pass</Link>
           <Link href="/deploy">Deploy</Link>
         </nav>
         <div className="network-controls">

@@ -104,7 +104,8 @@ export default function ExplorerPage() {
           <small>MEDICAL REGISTRY</small>
         </Link>
         <nav aria-label="Primary navigation">
-          <Link href="/">Verify</Link>
+          <Link href="/">Home</Link>
+          <Link href="/dashboard">Dashboard</Link>
           <Link href="/batch">Batch Verifier</Link>
           <Link href="/explorer" className="active">Explorer</Link>
           <Link href="/ehr">EHR Gateway</Link>
