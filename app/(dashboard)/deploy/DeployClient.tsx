@@ -74,6 +74,7 @@ export default function DeployClient() {
 
   const isWalletConnected = Boolean(session || wallet.connected || (isAuthenticated && authType === "wallet"));
   const displayAddress = session?.unshieldedAddress || wallet.address || walletAddress || user?.identifier || "mn_preview_wallet";
+  const shortAddress = displayAddress ? `${displayAddress.slice(0, 14)}…` : "Preview Active";
 
   const initSession = useCallback(async (): Promise<BrowserSession | null> => {
     if (session) return session;
@@ -247,9 +248,9 @@ export default function DeployClient() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left: Deployment Workflow Guide */}
-        <div className="lg:col-span-5 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
-          <h2 className="text-xl font-bold text-white">Browser Deployment Protocol</h2>
+        {/* Left: Deployment Workflow Guide in Liquid Glass */}
+        <div className="lg:col-span-5 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
+          <h2 className="text-xl font-bold text-white tracking-tight">Browser Deployment Protocol</h2>
           <p className="text-zinc-400 text-xs font-mono leading-relaxed">
             Direct client-side deployment without intermediary servers. The smart contract and proving keys are compiled into local WASM bytecode.
           </p>
@@ -264,9 +265,9 @@ export default function DeployClient() {
                 {isWalletConnected ? <Check size={14} /> : "1"}
               </span>
               <div>
-                <strong className="text-white block">Wallet Session</strong>
+                <strong className="text-white block">Connect 1AM Wallet</strong>
                 <span className="text-zinc-400 text-[11px]">
-                  {isWalletConnected ? `Connected (${displayAddress.slice(0, 14)}…)` : "Explicit Midnight preview session"}
+                  {isWalletConnected ? `Connected (${shortAddress})` : "Browser extension with Preview network"}
                 </span>
               </div>
             </li>
@@ -301,8 +302,8 @@ export default function DeployClient() {
           </ol>
         </div>
 
-        {/* Right: Interactive Deployment Console */}
-        <div className="lg:col-span-7 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+        {/* Right: Interactive Deployment Console in Liquid Glass */}
+        <div className="lg:col-span-7 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
           <div className="flex justify-between items-center border-b border-white/10 pb-4">
             <div className="flex items-center gap-2">
               <Rocket className="w-5 h-5 text-[#b08d57]" />

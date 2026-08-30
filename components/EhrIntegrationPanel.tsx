@@ -58,7 +58,14 @@ export default function EhrIntegrationPanel() {
       setResponseOutput(JSON.stringify(data, null, 2));
     } catch (err) {
       setResponseOutput(
-        JSON.stringify({ error: err instanceof Error ? err.message : "Network error" }, null, 2),
+        JSON.stringify(
+          {
+            error: "Failed to connect to /api/ehr/verify endpoint",
+            details: err instanceof Error ? err.message : String(err),
+          },
+          null,
+          2
+        )
       );
     } finally {
       setIsLoading(false);
@@ -73,13 +80,12 @@ export default function EhrIntegrationPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: webhookUrl,
-          institutionName: webhookHospital,
-          events: ["license.verified", "license.revoked", "license.renewed"],
+          hospital: webhookHospital,
         }),
       });
-      const data = (await res.json()) as { subscription?: { id: string; secret: string } };
+      const data = (await res.json()) as { success: boolean; subscription?: { id: string; secret: string } };
       if (data.subscription) {
-        setRegisteredWebhook({ id: data.subscription.id, secret: data.subscription.secret });
+        setRegisteredWebhook(data.subscription);
       }
     } catch {
       // ignore
@@ -94,8 +100,8 @@ export default function EhrIntegrationPanel() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Tab Navigation */}
-      <div className="flex border-b border-white/10 gap-2">
+      {/* Tab Navigation in Liquid Glass */}
+      <div className="flex border-b border-white/10 gap-2 pb-1 overflow-x-auto">
         {[
           { id: "api", label: "1. REST API Endpoint", icon: Terminal },
           { id: "fhir", label: "2. HL7® FHIR® R4 Schema", icon: Layers },
@@ -108,14 +114,14 @@ export default function EhrIntegrationPanel() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as "api" | "fhir" | "webhooks")}
               style={{
-                background: isActive ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                background: isActive ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
                 color: isActive ? "#ffffff" : "#a1a1aa",
-                borderBottom: isActive ? "2px solid #b08d57" : "2px solid transparent",
+                borderColor: isActive ? "rgba(176, 141, 87, 0.5)" : "rgba(255, 255, 255, 0.06)",
                 fontWeight: isActive ? 700 : 500
               }}
-              className="px-5 py-3 flex items-center gap-2 text-sm rounded-t-xl hover:text-white transition-all cursor-pointer"
+              className="px-5 py-3 rounded-2xl flex items-center gap-2 text-xs transition-all backdrop-blur-xl border hover:text-white cursor-pointer whitespace-nowrap shadow-sm"
             >
-              <Icon className={`w-4 h-4 ${isActive ? "text-[#b08d57]" : "text-zinc-500"}`} />
+              <Icon size={14} className={isActive ? "text-[#b08d57]" : "text-zinc-400"} />
               <span>{tab.label}</span>
             </button>
           );
@@ -125,10 +131,10 @@ export default function EhrIntegrationPanel() {
       {/* TAB 1: REST API */}
       {activeTab === "api" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-5">
+          <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-5">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="font-bold text-base text-white">Interactive Endpoint Tester</h3>
-              <span className="text-[10px] font-mono text-[#3fa96b] bg-[#3fa96b]/10 border border-[#3fa96b]/20 px-2 py-0.5 rounded font-bold">
+              <h3 className="font-bold text-base text-white tracking-tight">Interactive Endpoint Tester</h3>
+              <span className="text-[10px] font-mono text-[#3fa96b] bg-[#3fa96b]/10 border border-[#3fa96b]/20 px-2.5 py-0.5 rounded-full font-bold shadow-sm">
                 POST /api/ehr/verify
               </span>
             </div>
@@ -140,7 +146,7 @@ export default function EhrIntegrationPanel() {
                   type="text"
                   value={credentialId}
                   onChange={(e) => setCredentialId(e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
+                  className="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#b08d57] shadow-inner"
                 />
               </div>
 
@@ -183,7 +189,7 @@ export default function EhrIntegrationPanel() {
                   color: "#000000",
                   fontWeight: 700
                 }}
-                className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#b08d57] transition-all cursor-pointer shadow-xl disabled:opacity-50"
               >
                 {isLoading ? <RefreshCw className="w-4 h-4 animate-spin text-black" /> : <Send className="w-4 h-4 text-black" />}
                 <span>Execute Verification Request</span>
@@ -198,24 +204,24 @@ export default function EhrIntegrationPanel() {
                   <span>{copied ? "Copied" : "Copy"}</span>
                 </button>
               </div>
-              <pre className="p-3 bg-black/60 border border-white/10 rounded-xl text-[10px] font-mono text-zinc-300 overflow-x-auto">
+              <pre className="p-3 bg-black/60 border border-white/10 rounded-xl text-[10px] font-mono text-zinc-300 overflow-x-auto shadow-inner">
                 {curlCommand}
               </pre>
             </div>
           </div>
 
-          <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-4">
+          <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-4">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="font-bold text-base text-white">Live Response Payload</h3>
-              <span className="text-[11px] font-mono text-zinc-500">HTTP 200 OK</span>
+              <h3 className="font-bold text-base text-white tracking-tight">Live Response Payload</h3>
+              <span className="text-[11px] font-mono text-[#3fa96b] font-semibold">HTTP 200 OK</span>
             </div>
 
             {responseOutput ? (
-              <pre className="p-4 bg-black/70 border border-white/10 rounded-2xl text-xs font-mono text-[#3fa96b] max-h-[460px] overflow-auto">
+              <pre className="p-4 bg-black/60 border border-white/10 rounded-2xl text-xs font-mono text-[#3fa96b] max-h-[460px] overflow-auto shadow-inner">
                 {responseOutput}
               </pre>
             ) : (
-              <div className="py-24 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl">
+              <div className="py-24 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl bg-black/20">
                 Click &quot;Execute Verification Request&quot; to inspect the live JSON response payload.
               </div>
             )}
@@ -225,15 +231,15 @@ export default function EhrIntegrationPanel() {
 
       {/* TAB 2: FHIR R4 SCHEMA */}
       {activeTab === "fhir" && (
-        <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+        <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
           <div className="border-b border-white/10 pb-4">
-            <h3 className="font-bold text-xl text-white">HL7® FHIR® R4 Practitioner Schema</h3>
+            <h3 className="font-bold text-xl text-white tracking-tight">HL7® FHIR® R4 Practitioner Schema</h3>
             <p className="text-xs text-zinc-400 font-mono mt-0.5">
               Standardized conformance mapping for Epic Systems, Cerner Millennium, and Meditech Expanse
             </p>
           </div>
 
-          <pre className="p-6 bg-black/70 border border-white/10 rounded-2xl text-xs font-mono text-zinc-300 overflow-x-auto leading-relaxed">
+          <pre className="p-6 bg-black/60 border border-white/10 rounded-2xl text-xs font-mono text-zinc-300 overflow-x-auto leading-relaxed shadow-inner">
 {`{
   "resourceType": "VerificationResult",
   "id": "aquas-vr-e0c9d5d6",
@@ -269,9 +275,9 @@ export default function EhrIntegrationPanel() {
 
       {/* TAB 3: WEBHOOKS */}
       {activeTab === "webhooks" && (
-        <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+        <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
           <div className="border-b border-white/10 pb-4">
-            <h3 className="font-bold text-xl text-white">Outbound Revocation Webhooks</h3>
+            <h3 className="font-bold text-xl text-white tracking-tight">Outbound Revocation Webhooks</h3>
             <p className="text-xs text-zinc-400 font-mono mt-0.5">
               Receive real-time signed webhook callbacks whenever a medical board revokes or updates a license on-chain
             </p>
@@ -283,7 +289,7 @@ export default function EhrIntegrationPanel() {
               <input
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
-                className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
+                className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57] shadow-inner"
               />
             </div>
             <div className="space-y-1">
@@ -291,7 +297,7 @@ export default function EhrIntegrationPanel() {
               <input
                 value={webhookHospital}
                 onChange={(e) => setWebhookHospital(e.target.value)}
-                className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
+                className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57] shadow-inner"
               />
             </div>
             <button
@@ -301,14 +307,14 @@ export default function EhrIntegrationPanel() {
                 color: "#000000",
                 fontWeight: 700
               }}
-              className="py-3 px-6 rounded-xl hover:bg-[#b08d57] transition-colors cursor-pointer"
+              className="py-3 px-6 rounded-xl hover:bg-[#b08d57] transition-all cursor-pointer shadow-xl"
             >
               Register Webhook Subscriber
             </button>
           </form>
 
           {registeredWebhook && (
-            <div className="p-4 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl font-mono text-xs space-y-2">
+            <div className="p-4 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl font-mono text-xs space-y-2 shadow-md">
               <strong className="text-[#3fa96b] block">Webhook Subscription Registered:</strong>
               <div>ID: <span className="text-white">{registeredWebhook.id}</span></div>
               <div>HMAC Secret: <span className="text-[#b08d57]">{registeredWebhook.secret}</span></div>

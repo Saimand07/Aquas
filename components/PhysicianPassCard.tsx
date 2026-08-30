@@ -114,7 +114,7 @@ export default function PhysicianPassCard({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-sans">
       {/* Left Card: Doctor Pass View */}
-      <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6 shadow-xl">
+      <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
         <div className="flex justify-between items-center border-b border-white/10 pb-4">
           <div className="flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-[#b08d57]" />
@@ -143,12 +143,25 @@ export default function PhysicianPassCard({
               <span className="text-white font-bold">{licenseNumber}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">NPI Number:</span>
+              <span className="text-zinc-400">NPI Identifier:</span>
               <span className="text-zinc-300">{npiNumber}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">HMAC Challenge:</span>
-              <span className="text-[#3fa96b]">{pass?.timeStepNonce ? pass.timeStepNonce.slice(0, 16) + "…" : "Generating…"}</span>
+              <span className="text-zinc-400">Credential ID:</span>
+              <span className="text-zinc-400 truncate max-w-[160px]">{credentialId}</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 font-mono text-xs">
+            <div className="flex justify-between text-[11px] text-zinc-400">
+              <span>Challenge Rotation:</span>
+              <span className="text-[#3fa96b] font-bold">{remainingSeconds}s remaining</span>
+            </div>
+            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#3fa96b] transition-all duration-1000"
+                style={{ width: `${(remainingSeconds / 30) * 100}%` }}
+              />
             </div>
           </div>
 
@@ -184,8 +197,8 @@ export default function PhysicianPassCard({
         </div>
       </div>
 
-      {/* Right Card: Rotating QR Code Display */}
-      <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6 shadow-xl flex flex-col items-center text-center">
+      {/* Right Card: Rotating QR Code Display in Liquid Glass */}
+      <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6 flex flex-col items-center text-center">
         <div className="w-full flex justify-between items-center border-b border-white/10 pb-4">
           <div className="flex items-center gap-2">
             <WifiOff className="w-5 h-5 text-[#3fa96b]" />

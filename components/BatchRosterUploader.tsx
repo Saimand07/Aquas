@@ -90,7 +90,7 @@ export default function BatchRosterUploader({
   };
 
   return (
-    <div className="p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+    <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-4">
         <div>
           <span className="text-[10px] font-mono uppercase tracking-wider text-[#b08d57] font-bold block">

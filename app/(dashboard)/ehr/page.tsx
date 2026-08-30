@@ -25,26 +25,32 @@ export default function EhrGatewayPage() {
         </p>
       </div>
 
-      {/* Integration Feature Highlights */}
+      {/* Integration Feature Highlights in Liquid Glass */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 bg-black/50 border border-white/10 rounded-2xl flex items-start gap-3">
-          <Layers className="w-5 h-5 text-[#b08d57] mt-0.5" />
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl flex items-start gap-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#b08d57]">
+            <Layers className="w-5 h-5" />
+          </div>
           <div>
             <h3 className="text-sm font-bold text-white">HL7 FHIR R4 Bundle</h3>
             <p className="text-xs text-zinc-400 mt-1">Native verification result resources for Epic and Cerner ingestion.</p>
           </div>
         </div>
 
-        <div className="p-5 bg-black/50 border border-white/10 rounded-2xl flex items-start gap-3">
-          <Lock className="w-5 h-5 text-[#3fa96b] mt-0.5" />
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl flex items-start gap-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#3fa96b]">
+            <Lock className="w-5 h-5" />
+          </div>
           <div>
             <h3 className="text-sm font-bold text-white">Zero PII Ingestion</h3>
             <p className="text-xs text-zinc-400 mt-1">Verify without storing sensitive physician SSN or personal background data.</p>
           </div>
         </div>
 
-        <div className="p-5 bg-black/50 border border-white/10 rounded-2xl flex items-start gap-3">
-          <Building2 className="w-5 h-5 text-[#b08d57] mt-0.5" />
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl flex items-start gap-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#b08d57]">
+            <Building2 className="w-5 h-5" />
+          </div>
           <div>
             <h3 className="text-sm font-bold text-white">Signed Webhooks</h3>
             <p className="text-xs text-zinc-400 mt-1">Instant push notifications upon state board disciplinary license suspensions.</p>

@@ -50,7 +50,7 @@ export default function OfflinePassReader() {
   };
 
   return (
-    <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6 shadow-xl font-sans">
+    <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6 font-sans">
       <div className="flex justify-between items-center border-b border-white/10 pb-4">
         <div className="flex items-center gap-2">
           <WifiOff size={18} className="text-[#3fa96b]" />

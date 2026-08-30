@@ -134,45 +134,45 @@ export default function BatchResultsTable({ results, onReset }: BatchResultsTabl
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid in Liquid Glass */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 font-mono">
-        <div className="p-4 bg-black/50 border border-white/10 rounded-2xl">
-          <span className="text-[10px] text-zinc-400 uppercase block">Compliance Rate</span>
+        <div className="p-4 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <span className="text-[10px] text-zinc-400 uppercase block font-bold">Compliance Rate</span>
           <strong className="text-2xl text-[#3fa96b] font-bold block mt-1">{stats.complianceRate}%</strong>
           <span className="text-[10px] text-zinc-500">{stats.active} of {stats.total} Active</span>
         </div>
 
-        <div className="p-4 bg-black/50 border border-white/10 rounded-2xl">
-          <span className="text-[10px] text-zinc-400 uppercase block">Active &amp; Verified</span>
+        <div className="p-4 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <span className="text-[10px] text-zinc-400 uppercase block font-bold">Active &amp; Verified</span>
           <strong className="text-2xl text-white font-bold block mt-1">{stats.active}</strong>
           <span className="text-[10px] text-zinc-500">Shielded Commitments</span>
         </div>
 
-        <div className="p-4 bg-black/50 border border-white/10 rounded-2xl">
-          <span className="text-[10px] text-zinc-400 uppercase block">Expired</span>
+        <div className="p-4 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <span className="text-[10px] text-zinc-400 uppercase block font-bold">Expired</span>
           <strong className={`text-2xl font-bold block mt-1 ${stats.expired > 0 ? "text-amber-400" : "text-zinc-400"}`}>
             {stats.expired}
           </strong>
           <span className="text-[10px] text-zinc-500">Requires Renewal</span>
         </div>
 
-        <div className="p-4 bg-black/50 border border-white/10 rounded-2xl">
-          <span className="text-[10px] text-zinc-400 uppercase block">Revoked</span>
+        <div className="p-4 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <span className="text-[10px] text-zinc-400 uppercase block font-bold">Revoked</span>
           <strong className={`text-2xl font-bold block mt-1 ${stats.revoked > 0 ? "text-red-400" : "text-zinc-400"}`}>
             {stats.revoked}
           </strong>
           <span className="text-[10px] text-zinc-500">Board Sanctioned</span>
         </div>
 
-        <div className="p-4 bg-black/50 border border-white/10 rounded-2xl">
-          <span className="text-[10px] text-zinc-400 uppercase block">Avg ZK Latency</span>
+        <div className="p-4 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+          <span className="text-[10px] text-zinc-400 uppercase block font-bold">Avg ZK Latency</span>
           <strong className="text-2xl text-[#b08d57] font-bold block mt-1">{stats.avgLatency}ms</strong>
           <span className="text-[10px] text-zinc-500">Sub-second Indexer</span>
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="p-4 bg-black/50 border border-white/10 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+      {/* Search & Filter Bar in Liquid Glass */}
+      <div className="p-4 bg-white/[0.025] backdrop-blur-2xl border border-white/[0.12] rounded-2xl flex flex-wrap justify-between items-center gap-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
         <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
           <Search size={16} className="text-zinc-400" />
           <input
@@ -210,8 +210,8 @@ export default function BatchResultsTable({ results, onReset }: BatchResultsTabl
         </div>
       </div>
 
-      {/* Results Table */}
-      <div className="p-6 bg-black/50 border border-white/10 rounded-3xl overflow-x-auto">
+      {/* Results Table in Liquid Glass */}
+      <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 overflow-x-auto">
         <table className="w-full text-left font-mono text-xs">
           <thead>
             <tr className="border-b border-white/10 text-zinc-400 text-[11px]">

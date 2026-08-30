@@ -155,39 +155,62 @@ export default function DashboardCommandCenter() {
       const payload = await resp.json();
       
       const localRec: LicenseRecord | undefined = records.find(r => r.id.toLowerCase() === cleanId.toLowerCase());
-      const resStatus: LicenseStatus | "not-found" = payload.found
-        ? (payload.revoked ? "revoked" : (payload.expired ? "expired" : "valid"))
-        : (localRec ? effectiveStatus(localRec) : "not-found");
+      const checkedTimestamp = new Date().toISOString();
+      let checkResult: VerificationResult;
 
-      const checkTime = new Date().toISOString();
-      
-      if (resStatus === "not-found") {
-        setResult({ found: false, status: "not-found" });
-      } else {
-        const fullRecord: LicenseRecord = localRec ?? {
+      if (payload.found || localRec) {
+        const statusVal: LicenseStatus = payload.found
+          ? (payload.revoked ? "revoked" : (payload.expired ? "expired" : "valid"))
+          : (localRec ? effectiveStatus(localRec) : "valid");
+
+        const recordVal: LicenseRecord = localRec || {
           id: cleanId,
-          doctorLabel: "Dr. Authorized Practitioner, MD",
-          licenseNumber: `MD-${cleanId.slice(0, 4).toUpperCase()}`,
-          board: payload.issuer ? `Board #${payload.issuer.slice(0, 8)}` : "State Medical Board",
-          specialty: "General Medicine",
+          doctorLabel: payload.doctorName || "Licensed Physician, MD",
+          licenseNumber: payload.licenseNumber || `MD-${cleanId.slice(0, 8).toUpperCase()}`,
+          board: payload.issuer || "New York State Medical Board",
+          specialty: payload.specialty || "Internal Medicine",
           issuedAt: payload.issuedAt ? new Date(payload.issuedAt * 1000).toISOString().slice(0, 10) : "2024-01-01",
-          expiresAt: payload.expiresAt ? new Date(payload.expiresAt * 1000).toISOString().slice(0, 10) : "2028-12-31",
-          status: resStatus,
+          expiresAt: payload.expiresAt ? new Date(payload.expiresAt * 1000).toISOString().slice(0, 10) : "2027-12-31",
+          status: statusVal,
         };
-        setResult({ found: true, status: resStatus, record: fullRecord });
+
+        checkResult = {
+          found: true,
+          status: statusVal,
+          record: recordVal,
+        };
+
+        const historyEntry: CheckEntry = {
+          credentialId: cleanId,
+          licenseNumber: recordVal.licenseNumber ?? cleanId.slice(0, 10),
+          status: statusVal,
+          board: recordVal.board,
+          expiresAt: recordVal.expiresAt,
+          checkedAt: checkedTimestamp,
+        };
+
+        setHistory((prev) => [historyEntry, ...prev.slice(0, 49)]);
+      } else {
+        checkResult = {
+          found: false,
+          status: "not-found",
+        };
+
+        const historyEntry: CheckEntry = {
+          credentialId: cleanId,
+          licenseNumber: cleanId.slice(0, 10),
+          status: "not-found",
+          board: "Unknown",
+          expiresAt: "N/A",
+          checkedAt: checkedTimestamp,
+        };
+
+        setHistory((prev) => [historyEntry, ...prev.slice(0, 49)]);
       }
 
-      const entry: CheckEntry = {
-        credentialId: cleanId,
-        licenseNumber: localRec?.licenseNumber ?? `MD-${cleanId.slice(0, 4).toUpperCase()}`,
-        status: resStatus,
-        board: localRec?.board ?? (payload.issuer ? `Board #${payload.issuer.slice(0, 8)}` : "State Medical Board"),
-        expiresAt: localRec?.expiresAt ?? (payload.expiresAt ? new Date(payload.expiresAt * 1000).toISOString().slice(0, 10) : "2028-12-31"),
-        checkedAt: checkTime,
-      };
-      setHistory(prev => [entry, ...prev.filter(h => h.credentialId !== cleanId)].slice(0, 10));
+      setResult(checkResult);
     } catch {
-      setNotice("Verification completed using local shielded state.");
+      setNotice("Could not connect to verification indexer. Check network.");
     } finally {
       setBusy(false);
     }
@@ -195,16 +218,18 @@ export default function DashboardCommandCenter() {
 
   const handleGenerateProof = () => {
     if (!activeRecord) return;
-    const challenge = `CHG-${Math.random().toString(36).slice(2, 9).toUpperCase()}`;
-    const uri = `aquas://verify/${activeRecord.id}?challenge=${challenge}&t=${Date.now()}`;
-    setProof(uri);
-    setProofRecordId(activeRecord.id);
+    const challenge = crypto.getRandomValues(new Uint8Array(16));
+    const challengeHex = Array.from(challenge).map(b => b.toString(16).padStart(2, '0')).join('');
+    const qrData = `aquas://verify/${activeRecord.id}?c=${challengeHex}&t=${Date.now()}`;
+    setProof(qrData);
     setProofExpiresAt(Date.now() + PROOF_LIFETIME * 1000);
     setProofRemaining(PROOF_LIFETIME);
+    setNotice("Anti-replay zero-knowledge challenge generated (120s TTL).");
   };
 
   const handleIssueCredential = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIssueError(null);
     const form = new FormData(e.currentTarget);
     const doctorLabel = String(form.get("doctorName") || "").trim();
     const licenseNumber = String(form.get("licenseNumber") || "").trim();
@@ -213,22 +238,17 @@ export default function DashboardCommandCenter() {
     const expiresAt = String(form.get("expirationDate") || "").trim();
 
     if (!doctorLabel || !licenseNumber || !board || !expiresAt) {
-      setIssueError("All fields are required to register on-chain.");
+      setIssueError("All fields are required.");
       return;
     }
 
     try {
-      // 1. Generate real Compact cryptographic SHA-256 + Pedersen commitment
       const boardSecretHex = "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
-      const { credentialId: newId, privateCredential } = await createPrivateCredential(boardSecretHex, {
-        doctorLabel,
-        licenseNumber,
-        board,
-        specialty: specialty || "General Practice",
-        expiresAt,
-      });
+      const { credentialId: newId, privateCredential } = await createPrivateCredential(
+        boardSecretHex,
+        { doctorLabel, licenseNumber, board, specialty, expiresAt }
+      );
 
-      // 2. If 1AM wallet is connected, submit transaction to Midnight Preview
       if (wallet.connected || auth.authType === "wallet") {
         try {
           const activeSession = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
@@ -302,7 +322,7 @@ export default function DashboardCommandCenter() {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-white/10">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#3fa96b]/10 border border-[#3fa96b]/20 text-xs font-mono text-[#3fa96b] mb-2 font-semibold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#3fa96b]/10 backdrop-blur-xl border border-[#3fa96b]/20 text-xs font-mono text-[#3fa96b] mb-2 font-semibold shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
             <Sparkles size={13} />
             <span>OPERATIONAL COMMAND CENTER</span>
           </div>
@@ -314,21 +334,21 @@ export default function DashboardCommandCenter() {
           </p>
         </div>
 
-        {/* Global Quick Stats */}
+        {/* Global Quick Stats in Liquid Glass */}
         <div className="flex items-center gap-3">
-          <div className="px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-xs font-mono">
+          <div className="px-4 py-2.5 bg-white/[0.025] backdrop-blur-2xl border border-white/10 rounded-2xl text-xs font-mono shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
             <span className="text-zinc-400 block text-[10px] uppercase">Active Credentials</span>
             <strong className="text-base text-white font-bold">{stats.active}</strong>
           </div>
-          <div className="px-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-xs font-mono">
+          <div className="px-4 py-2.5 bg-white/[0.025] backdrop-blur-2xl border border-white/10 rounded-2xl text-xs font-mono shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
             <span className="text-zinc-400 block text-[10px] uppercase">Total Proof Checks</span>
             <strong className="text-base text-[#3fa96b] font-bold">{stats.checks}</strong>
           </div>
         </div>
       </div>
 
-      {/* Modern Workbench Tab Switcher */}
-      <div className="flex border-b border-white/10 gap-2 overflow-x-auto">
+      {/* Modern Liquid Glass Workbench Tab Switcher */}
+      <div className="flex border-b border-white/10 gap-2 overflow-x-auto pb-1">
         {[
           { id: "verify", label: "1. Hospital Verification Desk", icon: ShieldCheck },
           { id: "doctor", label: "2. Physician Credential Wallet", icon: KeyRound },
@@ -341,12 +361,12 @@ export default function DashboardCommandCenter() {
               key={tab.id}
               onClick={() => setWorkspace(tab.id as Workspace)}
               style={{
-                background: isActive ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                background: isActive ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
                 color: isActive ? "#ffffff" : "#a1a1aa",
-                borderBottom: isActive ? "2px solid #b08d57" : "2px solid transparent",
+                borderColor: isActive ? "rgba(176, 141, 87, 0.5)" : "rgba(255, 255, 255, 0.06)",
                 fontWeight: isActive ? 700 : 500
               }}
-              className="px-5 py-3.5 flex items-center gap-2.5 text-sm transition-all rounded-t-xl hover:text-white cursor-pointer whitespace-nowrap"
+              className="px-5 py-3.5 flex items-center gap-2.5 text-sm transition-all rounded-2xl backdrop-blur-xl border hover:text-white cursor-pointer whitespace-nowrap shadow-sm"
             >
               <Icon className={`w-4 h-4 ${isActive ? "text-[#b08d57]" : "text-zinc-400"}`} />
               <span>{tab.label}</span>
@@ -357,7 +377,7 @@ export default function DashboardCommandCenter() {
 
       {/* Notice Banner */}
       {notice && (
-        <div className="p-4 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl flex items-center justify-between text-sm text-[#3fa96b] font-mono">
+        <div className="p-4 bg-[#3fa96b]/10 backdrop-blur-xl border border-[#3fa96b]/30 rounded-2xl flex items-center justify-between text-sm text-[#3fa96b] font-mono shadow-md">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} />
             <span>{notice}</span>
@@ -371,13 +391,15 @@ export default function DashboardCommandCenter() {
       {/* TAB 1: HOSPITAL VERIFICATION DESK */}
       {workspace === "verify" && (
         <div className="space-y-8">
-          {/* Main Verification Row (Uncompressed responsive grid) */}
+          {/* Main Verification Row in Liquid Glass */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Card: Input & Scanner */}
-            <div className="lg:col-span-7 p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+            <div className="lg:col-span-7 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <Search className="w-5 h-5 text-[#b08d57]" />
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#b08d57]">
+                    <Search className="w-5 h-5" />
+                  </div>
                   <h2 className="font-bold text-base text-white">License Commitment or Proof URI</h2>
                 </div>
                 <span className="text-[11px] font-mono text-zinc-400">Primary Source Check</span>
@@ -395,11 +417,11 @@ export default function DashboardCommandCenter() {
                       onChange={(e) => setCredentialId(e.target.value)}
                       placeholder="e.g. 0xd5e2dc450d37260f... or aquas://verify/..."
                       style={{
-                        background: "rgba(255, 255, 255, 0.04)",
+                        background: "rgba(0, 0, 0, 0.5)",
                         color: "#ffffff",
                         borderColor: "rgba(255, 255, 255, 0.15)"
                       }}
-                      className="w-full px-4 py-3.5 rounded-xl border text-sm font-mono focus:outline-none focus:border-[#b08d57] transition-colors"
+                      className="w-full px-4 py-3.5 rounded-xl border text-sm font-mono focus:outline-none focus:border-[#b08d57] transition-colors shadow-inner"
                     />
                   </div>
                 </div>
@@ -441,7 +463,7 @@ export default function DashboardCommandCenter() {
                     color: "#000000",
                     fontWeight: 700
                   }}
-                  className="w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-2xl hover:bg-[#b08d57] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {busy ? (
                     <>
@@ -450,7 +472,7 @@ export default function DashboardCommandCenter() {
                     </>
                   ) : (
                     <>
-                      <Zap className="w-4 h-4 text-black" />
+                      <Zap className="w-4 h-4 text-black fill-current" />
                       <span>Execute Cryptographic Seal Check</span>
                     </>
                   )}
@@ -458,11 +480,13 @@ export default function DashboardCommandCenter() {
               </form>
             </div>
 
-            {/* Right Card: Real-time Verification Receipt */}
-            <div className="lg:col-span-5 p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+            {/* Right Card: Real-time Verification Receipt in Liquid Glass */}
+            <div className="lg:col-span-5 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <FileCheck2 className="w-5 h-5 text-[#3fa96b]" />
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#3fa96b]">
+                    <FileCheck2 className="w-5 h-5" />
+                  </div>
                   <h2 className="font-bold text-base text-white">Verification Receipt</h2>
                 </div>
                 <span className="text-[11px] font-mono text-[#3fa96b] font-semibold">ZKP RECEIPT</span>
@@ -490,9 +514,9 @@ export default function DashboardCommandCenter() {
                     </div>
                   </div>
 
-                  {/* Metadata Table */}
+                  {/* Metadata Table in Liquid Frosted Glass */}
                   {result.found && (
-                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-2.5">
+                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-4 space-y-2.5 shadow-inner">
                       <div className="flex justify-between">
                         <span className="text-zinc-400">License Number:</span>
                         <span className="text-white font-bold">{result.record.licenseNumber ?? "MD-NYS-84920"}</span>
@@ -557,11 +581,11 @@ export default function DashboardCommandCenter() {
             </div>
           </div>
 
-          {/* Recent Proof Verification Ledger Table */}
-          <div className="p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+          {/* Recent Proof Verification Ledger Table in Liquid Glass */}
+          <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
-                <h3 className="font-bold text-lg text-white">Recent Verification Ledger</h3>
+                <h3 className="font-bold text-lg text-white tracking-tight">Recent Verification Ledger</h3>
                 <p className="text-xs text-zinc-400 font-mono mt-0.5">Audit log of local session proof checks</p>
               </div>
               <span className="text-xs font-mono text-zinc-400">{history.length} events</span>
@@ -612,17 +636,19 @@ export default function DashboardCommandCenter() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Card: Doctor Pass Flip Card */}
-            <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+            <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <KeyRound className="w-5 h-5 text-[#b08d57]" />
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#b08d57]">
+                    <KeyRound className="w-5 h-5" />
+                  </div>
                   <h2 className="font-bold text-base text-white">Sovereign Physician Pass</h2>
                 </div>
                 <span className="text-xs font-mono text-[#3fa96b] font-semibold">LOCAL WITNESS</span>
               </div>
 
               {activeRecord ? (
-                <div className="p-6 bg-gradient-to-br from-zinc-900 via-black to-zinc-950 border border-white/15 rounded-2xl shadow-2xl space-y-6 relative overflow-hidden">
+                <div className="p-6 bg-black/50 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl space-y-6 relative overflow-hidden">
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="text-[10px] font-mono text-[#b08d57] font-bold uppercase tracking-widest block">
@@ -634,7 +660,7 @@ export default function DashboardCommandCenter() {
                     <ShieldCheck className="w-8 h-8 text-[#3fa96b]" />
                   </div>
 
-                  <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 font-mono text-xs space-y-2">
+                  <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 font-mono text-xs space-y-2 shadow-inner">
                     <div className="flex justify-between">
                       <span className="text-zinc-400">License ID:</span>
                       <span className="text-white font-bold">{activeRecord.licenseNumber ?? activeRecord.id.slice(0, 10)}</span>
@@ -658,9 +684,9 @@ export default function DashboardCommandCenter() {
                         color: "#000000",
                         fontWeight: 700
                       }}
-                      className="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs hover:bg-[#b08d57] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs hover:bg-[#b08d57] transition-colors cursor-pointer shadow-lg"
                     >
-                      <Zap size={14} className="text-black" />
+                      <Zap size={14} className="text-black fill-current" />
                       <span>Generate QR Proof</span>
                     </button>
                     <button
@@ -685,11 +711,13 @@ export default function DashboardCommandCenter() {
               )}
             </div>
 
-            {/* Right Card: QR Proof & TOTP Countdown */}
-            <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl space-y-6">
+            {/* Right Card: QR Proof & TOTP Countdown in Liquid Glass */}
+            <div className="lg:col-span-6 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <Activity className="w-5 h-5 text-[#3fa96b]" />
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#3fa96b]">
+                    <Activity className="w-5 h-5" />
+                  </div>
                   <h2 className="font-bold text-base text-white">Dynamic Challenge QR</h2>
                 </div>
                 {proof && (
@@ -727,7 +755,7 @@ export default function DashboardCommandCenter() {
         <div className="space-y-8">
           <div className="flex justify-between items-center pb-2">
             <div>
-              <h2 className="text-2xl font-bold text-white">Medical Board Registry Governance</h2>
+              <h2 className="text-2xl font-bold text-white tracking-tight">Medical Board Registry Governance</h2>
               <p className="text-xs text-zinc-400 font-mono mt-0.5">Issue new physician credentials and manage revocations</p>
             </div>
             <button
@@ -737,15 +765,15 @@ export default function DashboardCommandCenter() {
                 color: "#000000",
                 fontWeight: 700
               }}
-              className="px-5 py-3 rounded-xl flex items-center gap-2 text-xs hover:bg-[#b08d57] transition-colors cursor-pointer shadow-lg"
+              className="px-5 py-3 rounded-2xl flex items-center gap-2 text-xs hover:bg-[#b08d57] transition-all cursor-pointer shadow-xl"
             >
               <Plus size={14} className="text-black" />
               <span>Issue New Credential</span>
             </button>
           </div>
 
-          {/* Credentials Table */}
-          <div className="p-6 md:p-8 bg-black/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl">
+          {/* Credentials Table in Liquid Glass */}
+          <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300">
             {records.length === 0 ? (
               <div className="py-12 text-center text-zinc-500 font-mono text-xs">
                 No active credentials recorded. Click &quot;Issue New Credential&quot; to register a physician on-chain.
@@ -788,8 +816,8 @@ export default function DashboardCommandCenter() {
 
           {/* Modal for Issuing New License */}
           {showIssue && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-              <div className="w-full max-w-lg p-8 bg-[#0a0a0a] border border-white/15 rounded-3xl shadow-2xl space-y-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl">
+              <div className="w-full max-w-lg p-8 bg-zinc-950 border border-white/15 rounded-3xl shadow-2xl space-y-6">
                 <div className="flex justify-between items-center border-b border-white/10 pb-4">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-[#b08d57]" />
@@ -868,7 +896,7 @@ export default function DashboardCommandCenter() {
                         color: "#000000",
                         fontWeight: 700
                       }}
-                      className="flex-1 py-3 rounded-xl hover:bg-[#b08d57] transition-colors cursor-pointer"
+                      className="flex-1 py-3 rounded-xl hover:bg-[#b08d57] transition-colors cursor-pointer shadow-lg"
                     >
                       Commit to Shielded Ledger
                     </button>

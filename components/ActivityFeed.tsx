@@ -8,22 +8,24 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ events }: ActivityFeedProps) {
   return (
-    <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+    <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
       <div className="flex justify-between items-center border-b border-white/10 pb-4">
         <div className="flex items-center gap-2">
-          <Activity size={18} className="text-[#3fa96b]" />
+          <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-[#3fa96b] shadow-inner">
+            <Activity size={18} />
+          </div>
           <div>
-            <h3 className="font-bold text-lg text-white">On-Chain Activity Feed</h3>
+            <h3 className="font-bold text-lg text-white tracking-tight">On-Chain Activity Feed</h3>
             <p className="text-xs text-zinc-400 font-mono">Real-time telemetry from Midnight Preview</p>
           </div>
         </div>
-        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 font-bold">
+        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 font-bold shadow-sm">
           LIVE STREAM
         </span>
       </div>
 
       {events.length === 0 ? (
-        <div className="py-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl">
+        <div className="py-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl bg-black/30">
           No recent on-chain events indexed for this contract.
         </div>
       ) : (
@@ -36,7 +38,7 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
             return (
               <div
                 key={ev.id}
-                className="p-4 bg-white/[0.02] border border-white/10 rounded-2xl flex items-start gap-3 hover:bg-white/[0.04] transition-colors"
+                className="p-4 bg-black/40 border border-white/10 rounded-2xl flex items-start gap-3 hover:border-white/20 transition-colors shadow-inner"
               >
                 <div className="mt-0.5">
                   {isIssuance && <PlusCircle size={16} className="text-[#3fa96b]" />}
@@ -62,7 +64,7 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
                         href={ev.blockExplorerUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[#b08d57] hover:underline"
+                        className="text-[#3fa96b] hover:underline flex items-center gap-1 ml-auto"
                       >
                         <span>Explorer</span>
                         <ExternalLink size={10} />
