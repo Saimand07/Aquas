@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { shortId } from "@/lib/license-registry";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
@@ -28,6 +28,8 @@ const NAV_ITEMS = [
   { label: "Sovereign Deploy", icon: Rocket, href: "/deploy" },
 ];
 
+const emptySubscribe = () => () => {};
+
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -35,8 +37,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const connectedLabel = wallet.connected ? shortId(wallet.address ?? "connected") : "Connect 1AM";
   const liveMode = Boolean(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim());
   
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // If wallet is not connected, redirect to home page for authentication
   useEffect(() => {
@@ -49,7 +54,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     return () => clearTimeout(timer);
   }, [wallet.connected, wallet.connecting, router]);
 
-  if (!mounted || (!wallet.connected && !wallet.connecting)) {
+  if (!isMounted || (!wallet.connected && !wallet.connecting)) {
     return null; // Don't render dashboard if not authenticated or not mounted
   }
 

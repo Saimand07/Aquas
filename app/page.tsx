@@ -1,32 +1,22 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Shield,
   Activity,
-  CheckCircle,
   Hexagon,
   EyeOff,
-  Key,
   Globe,
-  Settings2,
   Terminal,
-  Code2,
   Lock,
-  Building2,
-  Briefcase,
-  Users,
-  LineChart,
-  SplitSquareHorizontal,
   Server,
   FileCheck2,
   Smartphone,
   CheckCircle2,
-  ChevronRight,
   Sparkles,
   Zap,
   ShieldCheck,
@@ -118,7 +108,7 @@ export default function LandingPage() {
       setIsLaunching(true);
       try {
         await wallet.connect();
-      } catch (e) {
+      } catch {
         setIsLaunching(false);
       }
     }
@@ -176,8 +166,8 @@ export default function LandingPage() {
                 {wallet.connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch Platform"}
                 {!wallet.connecting && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
               </button>
-              <Link href="/contact" className="h-12 px-8 flex items-center justify-center gap-2 bg-[rgba(20,20,20,0.8)] border border-white/[0.1] text-white font-medium rounded hover:bg-white/[0.05] transition-colors">
-                Request Enterprise Demo
+              <Link href="/dashboard" className="h-12 px-8 flex items-center justify-center gap-2 bg-[rgba(20,20,20,0.8)] border border-white/[0.1] text-white font-medium rounded hover:bg-white/[0.05] transition-colors">
+                Explore Dashboard
               </Link>
             </div>
 
@@ -343,7 +333,7 @@ export default function LandingPage() {
       <section className="py-32 px-6 max-w-7xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-6 text-center">Enterprise ZK Capabilities</h2>
         <p className="text-lg text-white/50 max-w-3xl mx-auto text-center mb-20">
-          Aquas natively integrates Midnight's core ZK capabilities into a unified hospital credentialing infrastructure.
+          Aquas natively integrates Midnight&apos;s core ZK capabilities into a unified hospital credentialing infrastructure.
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
