@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Unplug,
   CircleAlert,
-  UserCheck
+  UserCheck,
+  Globe
 } from "lucide-react";
 import { shortId } from "@/lib/license-registry";
 import { useEffect, useSyncExternalStore } from "react";
@@ -136,9 +137,26 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {authError && <div className="text-xs text-red-400 flex items-center gap-1"><CircleAlert size={12}/>{authError}</div>}
             
+            <a
+              href={`https://preview.midnightexplorer.com/contract/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74"}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: "rgba(63, 169, 107, 0.12)",
+                color: "#3fa96b",
+                border: "1px solid rgba(63, 169, 107, 0.3)",
+                fontWeight: 600
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono hover:bg-[#3fa96b]/20 transition-colors cursor-pointer"
+              title="Verify Smart Contract on Midnight Preview Explorer"
+            >
+              <Globe size={13} />
+              <span>Explorer Contract ↗</span>
+            </a>
+
             <div className="flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl p-1 text-xs">
               <span className="text-[10px] text-zinc-400 uppercase font-mono px-2">Mode:</span>
               <span className="px-3 py-1 rounded-lg font-mono text-xs bg-white/10 text-white font-semibold uppercase">
