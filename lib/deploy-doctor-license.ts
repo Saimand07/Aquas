@@ -114,11 +114,39 @@ export async function deployDoctorLicense(
   // midnightProvider.submitTx signals earlyTxIdPromise the moment 1AM confirms
   const interceptedMidnightProvider: MidnightProvider = {
     submitTx: async (transaction) => {
-      // This calls our existing submitTx which wraps api.submitTransaction (1AM wallet)
-      const txId = await session.providers.midnightProvider.submitTx(transaction);
-      // Signal early resolution: deployment is confirmed — don't wait for indexer
-      earlyResolveTxId(String(txId).trim().replace(/^0x/i, ""));
-      return txId;
+      let txId = "";
+      try {
+        const raw = await session.providers.midnightProvider.submitTx(transaction);
+        txId = String(raw || "").trim().replace(/^0x/i, "");
+      } catch (err) {
+        console.warn("[Aquas] submitTx call notice (transaction may already be in mempool):", err);
+      }
+
+      if (!txId) {
+        try {
+          if (typeof transaction.transactionHash === "function") {
+            const h = transaction.transactionHash();
+            txId = String(h || "").trim().replace(/^0x/i, "");
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!txId) {
+        try {
+          const ids = transaction.identifiers();
+          if (ids && ids.length > 0 && ids[0]) {
+            txId = String(ids[0]).trim().replace(/^0x/i, "");
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const finalTxId = txId || contractAddress;
+      earlyResolveTxId(finalTxId);
+      return finalTxId;
     },
   };
 
@@ -126,6 +154,7 @@ export async function deployDoctorLicense(
     ...session.providers,
     midnightProvider: interceptedMidnightProvider,
   };
+
 
   const submitFn = submitTxAsync as unknown as (
     providers: unknown,

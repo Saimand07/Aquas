@@ -53,13 +53,12 @@ export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkC
 }
 
 export function getExplorerContractUrl(contractAddress: string, network: MidnightNetwork = "preview"): string {
-  const config = getNetworkConfig(network);
   const cleanAddr = contractAddress.trim().replace(/^0x/i, "");
-  return `${config.explorerBaseUrl}/contract/${cleanAddr}`;
+  return `https://explorer.1am.xyz/contract/${cleanAddr}?network=${network}`;
 }
 
 export function getExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
-  const config = getNetworkConfig(network);
   const cleanTx = txId.trim().replace(/^0x/i, "");
-  return `${config.explorerBaseUrl}/tx/${cleanTx}`;
+  return `https://explorer.1am.xyz/tx/${cleanTx}?network=${network}`;
 }
+

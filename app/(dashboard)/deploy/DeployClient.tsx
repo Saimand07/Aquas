@@ -85,6 +85,14 @@ export default function DeployClient() {
   const displayAddress = session?.unshieldedAddress || wallet.address || walletAddress || user?.identifier || "mn_preview_wallet";
   const shortAddress = displayAddress ? `${displayAddress.slice(0, 14)}…` : `${netConfig.badge} Active`;
 
+  // Component-level mount tracker (only unmounts when component unmounts from DOM)
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const initSession = useCallback(async (): Promise<BrowserSession | null> => {
     if (session && session.network === deployNetwork) return session;
     setConnecting(true);
@@ -109,8 +117,9 @@ export default function DeployClient() {
   }, [session, deployNetwork]);
 
   useEffect(() => {
+    let active = true;
     void detectOneAmWallet(deployNetwork).then((w) => {
-      if (mounted.current) {
+      if (active && mounted.current) {
         const hasWallet = w !== null;
         setWalletInstalled(hasWallet);
         if (hasWallet && (wallet.connected || authType === "wallet")) {
@@ -119,9 +128,10 @@ export default function DeployClient() {
       }
     });
     return () => {
-      mounted.current = false;
+      active = false;
     };
   }, [deployNetwork, initSession, wallet.connected, authType]);
+
 
   const handleDeploy = async () => {
     if (deploying) return;
@@ -430,7 +440,11 @@ export default function DeployClient() {
               {deploying ? (
                 <>
                   <LoaderCircle className="animate-spin text-black" size={16} />
-                  <span>Synthesizing ZK Proof on {netConfig.badge}…</span>
+                  <span>
+                    {status.includes("Approve")
+                      ? "Waiting for 1AM Wallet Approval…"
+                      : `Synthesizing ZK Proof on ${netConfig.badge}…`}
+                  </span>
                 </>
               ) : (
                 <>
@@ -440,6 +454,7 @@ export default function DeployClient() {
               )}
             </button>
           </div>
+
 
           {/* Deployment Result Card */}
           {deployment ? (
