@@ -38,7 +38,10 @@ type CircuitType = "proveValidLicense" | "createLicense" | "createBoard" | "dele
 
 const SAMPLE_BOARD_SECRET = "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
 const SAMPLE_OWNER_SECRET = "223344556677889900aabbccddeeff11223344556677889900aabbccddeeff11";
-const SAMPLE_CREDENTIAL_ID = "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
+// NOTE: This is NOT a credential ID — this is the contract address. The actual credential ID is
+// computed from (boardSecret, doctorMetadata) inside createPrivateCredential(). 
+// We do NOT show a sample credential ID here because it must match the board secret + metadata.
+const SAMPLE_CREDENTIAL_ID = "";
 
 export default function CircuitCallWorkbench() {
   const wallet = useMidnightWallet();
@@ -57,15 +60,48 @@ export default function CircuitCallWorkbench() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form inputs
+  // credentialId starts empty — it is COMPUTED from boardSecret+metadata. User must generate it or paste a real one.
   const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL_ID);
   const [boardSecret, setBoardSecret] = useState(SAMPLE_BOARD_SECRET);
   const [ownerSecret, setOwnerSecret] = useState(SAMPLE_OWNER_SECRET);
+  // Stored private credential for the proveValidLicense circuit (generated alongside credentialId)
+  const [storedPrivateCredential, setStoredPrivateCredential] = useState<import("@/lib/doctor-license-client").PrivateCredential | null>(null);
 
   const isWalletConnected = Boolean(wallet.connected || (isAuthenticated && authType === "wallet"));
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, `[${timestamp}] ${msg}`]);
+  };
+
+  // Generate a fresh credential commitment from the current boardSecret and sample doctor metadata
+  const handleGenerateCredential = async () => {
+    try {
+      setErrorMsg(null);
+      const cleanSecret = boardSecret.trim().replace(/^0x/i, "");
+      if (cleanSecret.length !== 64) {
+        setErrorMsg("Board Secret must be exactly 64 hex characters (32 bytes).");
+        return;
+      }
+      const { credentialId: newId, privateCredential } = await createPrivateCredential(cleanSecret, {
+        doctorName: "Dr. Sarah Lin, MD",
+        licenseNumber: "NYS-84920",
+        board: "New York Medical Board",
+      });
+      setCredentialId(newId);
+      setStoredPrivateCredential(privateCredential);
+      setLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] Generated credential commitment: ${newId}`,
+        `[${new Date().toLocaleTimeString()}] Private credential stored in-session. Ready to prove.`,
+      ]);
+      toast.success("Credential ID Generated", {
+        description: `Commitment: ${newId.slice(0, 20)}…`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+    }
   };
 
   const handleExecuteCircuit = async () => {
@@ -101,22 +137,38 @@ export default function CircuitCallWorkbench() {
         addLog("Evaluating witness: { credentialPayload, credentialNonce, boardKey, doctorSecret }");
         addLog("Step 3/4: Requesting 1AM Proofstation to compute Halo2 SNARK proof…");
 
-        const { privateCredential } = await createPrivateCredential(boardSecret, {
-          doctorName: "Dr. Sarah Lin, MD",
-          licenseNumber: "NYS-84920",
-          board: "New York Medical Board",
-        });
+        // CRITICAL: The credentialId MUST be the commitment derived from this exact privateCredential.
+        // Using a mismatched credentialId causes: "failed assert: private credential does not match ID"
+        let privateCredential = storedPrivateCredential;
+        let resolvedCredentialId = credentialId.replace(/^0x/i, "");
+
+        if (!privateCredential || !resolvedCredentialId) {
+          // Auto-generate matching credential + commitment from the board secret
+          addLog("Auto-generating credential commitment from boardSecret + doctor metadata…");
+          const generated = await createPrivateCredential(boardSecret.replace(/^0x/i, ""), {
+            doctorName: "Dr. Sarah Lin, MD",
+            licenseNumber: "NYS-84920",
+            board: "New York Medical Board",
+          });
+          privateCredential = generated.privateCredential;
+          resolvedCredentialId = generated.credentialId.replace(/^0x/i, "");
+          setCredentialId(generated.credentialId);
+          setStoredPrivateCredential(generated.privateCredential);
+          addLog(`Credential commitment: ${generated.credentialId}`);
+        }
 
         const challenge = crypto.getRandomValues(new Uint8Array(32));
+        addLog(`Using commitment ID: ${resolvedCredentialId.slice(0, 16)}…`);
         addLog(`Step 4/4: Submitting proof to ${netConfig.name} (${netConfig.rpcUri})…`);
 
         tx = await proveLicenseOnChain(
           sess,
           contractAddress,
           privateCredential,
-          credentialId.replace(/^0x/, ""),
+          resolvedCredentialId,
           challenge
         );
+
 
         setTxHash(tx);
         addLog(`✓ Circuit Execution Confirmed! Transaction ID: ${tx}`);
@@ -300,25 +352,48 @@ export default function CircuitCallWorkbench() {
           {selectedCircuit === "proveValidLicense" && (
             <>
               <div className="space-y-1">
-                <label className="text-zinc-400 text-[11px]">Credential Commitment ID (Hex):</label>
-                <input
-                  type="text"
-                  value={credentialId}
-                  onChange={(e) => setCredentialId(e.target.value)}
-                  className="w-full p-2.5 bg-black/60 border border-white/10 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#b08d57]"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-zinc-400 text-[11px]">Board Secret (Private Witness):</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-zinc-400 text-[11px]">Board Secret (Private Witness):</label>
+                </div>
                 <input
                   type="text"
                   value={boardSecret}
-                  onChange={(e) => setBoardSecret(e.target.value)}
+                  onChange={(e) => { setBoardSecret(e.target.value); setStoredPrivateCredential(null); setCredentialId(""); }}
                   className="w-full p-2.5 bg-black/60 border border-white/10 rounded-lg text-zinc-400 font-mono text-xs focus:outline-none focus:border-[#b08d57]"
                 />
               </div>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-zinc-400 text-[11px]">Credential Commitment ID (Hex):</label>
+                  <button
+                    onClick={handleGenerateCredential}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-[#b08d57]/15 border border-[#b08d57]/30 text-[#b08d57] hover:bg-[#b08d57]/30 transition-colors cursor-pointer font-bold"
+                    title="Compute the credential commitment ID from the Board Secret above"
+                  >
+                    ⚡ Generate from Secret
+                  </button>
+                </div>
+                {!credentialId && (
+                  <p className="text-amber-400/70 text-[10px] font-mono">
+                    ⚠ No commitment ID. Click &quot;Generate from Secret&quot; above or paste a real credential ID.
+                  </p>
+                )}
+                <input
+                  type="text"
+                  value={credentialId}
+                  onChange={(e) => { setCredentialId(e.target.value); setStoredPrivateCredential(null); }}
+                  placeholder="Click 'Generate from Secret' to compute the commitment ID…"
+                  className="w-full p-2.5 bg-black/60 border border-white/10 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-[#b08d57] placeholder:text-zinc-600"
+                />
+                {storedPrivateCredential && (
+                  <p className="text-[#3fa96b] text-[10px] font-mono">
+                    ✓ Private credential stored in-session. Commitment matches. Ready to prove.
+                  </p>
+                )}
+              </div>
             </>
           )}
+
 
           {selectedCircuit === "createLicense" && (
             <>

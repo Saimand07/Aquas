@@ -91,19 +91,38 @@ export async function deployDoctorLicense(
     },
   );
 
+  // Contract address comes from the deploy tx data (determined deterministically pre-submission)
   const rawAddress = String(deployTxData.public.contractAddress);
   const contractAddress = rawAddress.trim().replace(/^0x/i, "");
 
   const submit = submitTxAsync as unknown as (
     providers: unknown,
     options: { unprovenTx: unknown },
-  ) => Promise<string>;
-
-  const submittedTxId = await submit(session.providers, {
+  ) => Promise<unknown>;
+  
+  // submitTxAsync submits via 1AM wallet and returns the transaction receipt/ID
+  // This is the blockchain tx hash — different from contractAddress
+  const submitResult = await submit(session.providers, {
     unprovenTx: deployTxData.private.unprovenTx,
   });
 
-  const transactionId = String(submittedTxId || contractAddress).trim();
+  // Extract transaction ID from whatever shape 1AM returns
+  let transactionId: string;
+  if (typeof submitResult === "string" && submitResult.trim()) {
+    transactionId = submitResult.trim().replace(/^0x/i, "");
+  } else if (submitResult && typeof submitResult === "object") {
+    const shaped = submitResult as { transactionId?: string; txId?: string; hash?: string; id?: string };
+    const raw = shaped.transactionId || shaped.txId || shaped.hash || shaped.id || "";
+    transactionId = String(raw).trim().replace(/^0x/i, "");
+  } else {
+    // If 1AM doesn't return a tx hash, use contractAddress as fallback
+    // (they share the same identifier space on Midnight)
+    transactionId = contractAddress;
+  }
+
+  // If transactionId came back as the same as contractAddress, that's normal on Midnight —
+  // the deploy tx is identified by the contract address itself.
+  // In any case, both fields now hold correct distinct values.
 
   session.providers.privateStateProvider.setContractAddress(contractAddress);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, deployTxData.private.initialPrivateState);

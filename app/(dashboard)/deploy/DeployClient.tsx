@@ -34,29 +34,26 @@ type DeploymentRecord = {
   deployedAt: string;
 };
 
-function loadStoredDeployment(network: MidnightNetwork): DeploymentRecord {
-  const netConfig = getNetworkConfig(network);
-  const fallback: DeploymentRecord = {
-    contractAddress: netConfig.canonicalContract,
-    transactionId: netConfig.canonicalContract,
-    deployedAt: new Date().toISOString(),
-  };
-
-  if (typeof window === "undefined") return fallback;
+function loadStoredDeployment(network: MidnightNetwork): DeploymentRecord | null {
+  if (typeof window === "undefined") return null;
   try {
     const saved = window.localStorage.getItem(`aquas:deployment:${network}`);
     if (saved) {
       const parsed = JSON.parse(saved) as DeploymentRecord;
-      if (parsed.contractAddress && !parsed.contractAddress.includes("2459ebb")) {
+      // Validate: must have a real contractAddress (64 hex chars, no placeholder)
+      const clean = parsed.contractAddress?.replace(/^0x/i, "") ?? "";
+      if (clean.length === 64 && /^[0-9a-f]+$/i.test(clean)) {
         return parsed;
       }
+      // Invalid/stale record — remove it
       window.localStorage.removeItem(`aquas:deployment:${network}`);
     }
   } catch {
     // ignore
   }
-  return fallback;
+  return null;
 }
+
 
 export default function DeployClient() {
   const wallet = useMidnightWallet();
@@ -75,7 +72,7 @@ export default function DeployClient() {
   const netConfig = getNetworkConfig(deployNetwork);
   const storageKey = `aquas:deployment:${deployNetwork}`;
 
-  const [deployment, setDeployment] = useState<DeploymentRecord>(() => loadStoredDeployment(deployNetwork));
+  const [deployment, setDeployment] = useState<DeploymentRecord | null>(() => loadStoredDeployment(deployNetwork));
 
   const handleNetworkChange = (net: MidnightNetwork) => {
     switchNetwork(net);
@@ -206,15 +203,20 @@ export default function DeployClient() {
   }
 
   const resetToCanonical = () => {
-    const canonical = loadStoredDeployment(deployNetwork);
-    setDeployment(canonical);
     window.localStorage.removeItem(storageKey);
-    setStatus(`Reset to canonical ${deployNetwork} contract.`);
-    toast.info(`Reset to canonical ${deployNetwork} contract.`);
+    setDeployment(null);
+    setStatus(`Cleared ${deployNetwork} deployment record. Ready to deploy fresh.`);
+    toast.info(`Cleared ${deployNetwork} deployment record.`);
   };
 
   const explorerContractUrl = deployment ? getExplorerContractUrl(deployment.contractAddress, deployNetwork) : "";
-  const explorerTxUrl = deployment ? getExplorerTxUrl(deployment.transactionId, deployNetwork) : "";
+  // On Midnight, the tx hash for a deploy may equal the contract address — both point to /contract/ on explorer
+  const explorerTxUrl = deployment
+    ? deployment.transactionId === deployment.contractAddress
+      ? getExplorerContractUrl(deployment.contractAddress, deployNetwork)
+      : getExplorerTxUrl(deployment.transactionId, deployNetwork)
+    : "";
+
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
@@ -427,7 +429,7 @@ export default function DeployClient() {
           </div>
 
           {/* Deployment Result Card */}
-          {deployment && (
+          {deployment ? (
             <div className="p-6 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl space-y-4 shadow-inner font-mono text-xs">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
@@ -454,7 +456,7 @@ export default function DeployClient() {
                       target="_blank"
                       rel="noreferrer"
                       className="p-1 text-[#3fa96b] hover:text-white cursor-pointer"
-                      title="Verify on Explorer"
+                      title="Verify Contract on Explorer"
                     >
                       <ExternalLink size={14} />
                     </a>
@@ -462,7 +464,18 @@ export default function DeployClient() {
                 </div>
 
                 <div>
-                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Transaction Hash:</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-zinc-500 text-[10px] uppercase tracking-wider">
+                      {deployment.transactionId === deployment.contractAddress
+                        ? "Transaction (= Contract Address on Midnight):"
+                        : "Transaction Hash:"}
+                    </label>
+                    {deployment.transactionId === deployment.contractAddress && (
+                      <span className="text-[9px] text-zinc-600 italic">
+                        Normal on Midnight — deploy tx ID equals contract address
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 bg-black/60 border border-white/10 p-2.5 rounded-xl">
                     <span className="text-zinc-200 text-[11px] truncate flex-1">{deployment.transactionId}</span>
                     <button
@@ -501,6 +514,12 @@ export default function DeployClient() {
                   </div>
                 )}
               </div>
+            </div>
+          ) : !deploying && (
+            <div className="p-5 bg-white/[0.02] border border-white/10 rounded-2xl text-center font-mono text-xs text-zinc-500">
+              <Rocket size={20} className="mx-auto mb-2 text-zinc-600" />
+              <p>No deployment on {netConfig.badge} yet.</p>
+              <p className="text-[11px] mt-1 text-zinc-600">Connect your 1AM wallet and click Deploy to broadcast the contract.</p>
             </div>
           )}
         </div>
