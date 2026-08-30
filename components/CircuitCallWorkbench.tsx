@@ -66,14 +66,18 @@ export default function CircuitCallWorkbench() {
   // credentialId starts empty — it is COMPUTED from boardSecret+metadata. User must generate it or paste a real one.
   const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL_ID);
   const [boardSecret, setBoardSecret] = useState(SAMPLE_BOARD_SECRET);
-  const [ownerSecret, setOwnerSecret] = useState(() => {
-    return getStoredDeployment(currentNetwork)?.ownerSecret || SAMPLE_OWNER_SECRET;
-  });
-  // Stored private credential for the proveValidLicense circuit (generated alongside credentialId)
+  const [customOwnerSecret, setCustomOwnerSecret] = useState<string | null>(null);
 
+  const storedOwnerSecret = getStoredDeployment(currentNetwork)?.ownerSecret;
+  const ownerSecret = customOwnerSecret ?? storedOwnerSecret ?? SAMPLE_OWNER_SECRET;
+  const setOwnerSecret = (val: string) => setCustomOwnerSecret(val);
+
+
+  // Stored private credential for the proveValidLicense circuit (generated alongside credentialId)
   const [storedPrivateCredential, setStoredPrivateCredential] = useState<import("@/lib/doctor-license-client").PrivateCredential | null>(null);
 
   const isWalletConnected = Boolean(wallet.connected || (isAuthenticated && authType === "wallet"));
+
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -252,7 +256,9 @@ export default function CircuitCallWorkbench() {
       }
     } catch (err) {
       let msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("issuing board is no longer trusted") || msg.includes("board is not trusted") || msg.includes("board not found")) {
+      if (msg.includes("only registry owner may perform this action") || msg.includes("assertOwner")) {
+        msg = "Registry Owner Secret mismatch: The provided Registry Owner Secret does not match the secret that was set when this smart contract was deployed. Please deploy a fresh contract from the Deploy page (which uses the standard owner secret) or provide the owner secret used during deployment.";
+      } else if (msg.includes("issuing board is no longer trusted") || msg.includes("board is not trusted") || msg.includes("board not found")) {
         msg = "Medical Board not registered on this contract yet. Please execute Step 1 (createBoard) first to register the board authority, then Step 2 (createLicense) before proving.";
       } else if (msg.includes("license not found")) {
         msg = "License credential ID not found on-chain. Please execute Step 2 (createLicense) first to commit the license to the ledger.";
@@ -261,8 +267,9 @@ export default function CircuitCallWorkbench() {
       }
       setErrorMsg(msg);
       addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Notice: ${msg}`);
-      toast.error(`Circuit Action Required`, { description: msg, duration: 8000 });
+      toast.error(`Circuit Action Required`, { description: msg, duration: 9000 });
     } finally {
+
       setExecuting(false);
     }
   };

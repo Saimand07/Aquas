@@ -18,6 +18,7 @@ import {
   connectOneAm,
   detectOneAmWallet,
   pollForContract,
+  fromHex,
   toHex,
   getNetworkConfig,
   getExplorerContractUrl,
@@ -25,6 +26,7 @@ import {
   type BrowserSession,
   type MidnightNetwork,
 } from "@/lib/midnight-browser";
+
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
 import { saveDeployedContract, clearDeployedContract } from "@/lib/deployed-contract";
@@ -150,7 +152,9 @@ export default function DeployClient() {
         }
       }
 
-      const secret = crypto.getRandomValues(new Uint8Array(32));
+      // Standard deployer owner secret — matches Workbench default so createBoard authority works out-of-the-box
+      const DEFAULT_OWNER_SECRET = "223344556677889900aabbccddeeff11223344556677889900aabbccddeeff11";
+      const secret = fromHex(DEFAULT_OWNER_SECRET);
 
       // Update status to show we're in ZK proof phase
       setStatus("Building ZK circuit & loading proving keys…");
@@ -176,6 +180,7 @@ export default function DeployClient() {
       setDeploying(false);
       saveDeployedContract(deployNetwork, record.contractAddress, record.transactionId, toHex(secret));
       setStatus(`✓ Contract confirmed on ${netConfig.badge} — indexer syncing in background…`);
+
 
 
       // Rich in-app toast notification with verifiable explorer link

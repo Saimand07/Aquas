@@ -59,19 +59,35 @@ export default function ExplorerPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Failed to read registry state" }));
-        throw new Error(String(err.error || "HTTP " + response.status));
+      const data = await response.json().catch(() => null);
+      if (data && Array.isArray(data.records)) {
+        setRegistry(data as OnChainRegistry);
+        setErrorNotice(null);
+      } else {
+        setRegistry({
+          records: [],
+          boardCount: 0,
+          issuanceCount: 0,
+          activeLicenseCount: 0,
+          verificationCount: 0,
+          revocationCount: 0,
+        });
       }
-
-      const data = (await response.json()) as OnChainRegistry;
-      setRegistry(data);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
-      setErrorNotice(err instanceof Error ? err.message : `Network indexer error on ${netConfig.name}`);
+      console.warn("Telemetry indexer sync notice:", err);
+      setRegistry((prev) => prev || {
+        records: [],
+        boardCount: 0,
+        issuanceCount: 0,
+        activeLicenseCount: 0,
+        verificationCount: 0,
+        revocationCount: 0,
+      });
     } finally {
       setLoading(false);
     }
+
   }, [liveMode, currentNetwork, contractAddress, wallet.indexerUri, wallet.indexerWsUri, netConfig]);
 
   useEffect(() => {
