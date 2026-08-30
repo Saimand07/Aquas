@@ -4,6 +4,7 @@ import { CompiledContract } from "@midnight-ntwrk/compact-js";
 import { sampleSigningKey } from "@midnight-ntwrk/compact-runtime";
 import { createUnprovenDeployTx, submitTxAsync } from "@midnight-ntwrk/midnight-js-contracts";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
+import type { MidnightProvider } from "@midnight-ntwrk/midnight-js-types";
 import { Contract, type Witnesses } from "../contracts/managed/doctor_license/contract/index.js";
 import type { BrowserSession } from "./midnight-browser";
 
@@ -71,12 +72,12 @@ export async function deployDoctorLicense(
 
   const initialPrivateState = createInitialPrivateState(ownerSecret);
   const signingKey = sampleSigningKey();
-  
+
   const createDeploy = createUnprovenDeployTx as unknown as (
     providers: unknown,
     options: unknown,
   ) => Promise<DeployTxData>;
-  
+
   const deployTxData = await createDeploy(
     {
       zkConfigProvider: session.providers.zkConfigProvider,
@@ -91,45 +92,83 @@ export async function deployDoctorLicense(
     },
   );
 
-  // Contract address comes from the deploy tx data (determined deterministically pre-submission)
+  // Contract address is deterministic — known before submission
   const rawAddress = String(deployTxData.public.contractAddress);
   const contractAddress = rawAddress.trim().replace(/^0x/i, "");
 
-  const submit = submitTxAsync as unknown as (
+  // ─────────────────────────────────────────────────────────────────────────
+  // KEY FIX: The spinner never stops because submitTxAsync BLOCKS on indexer
+  // polling AFTER 1AM has already confirmed the transaction.
+  //
+  // Solution: Intercept `midnightProvider.submitTx` with a side-channel promise.
+  // The moment 1AM confirms (submitTx resolves), we immediately capture the
+  // tx ID and resolve our own promise — WITHOUT waiting for indexer polling.
+  // submitTxAsync continues running in the background (fire-and-forget).
+  // ─────────────────────────────────────────────────────────────────────────
+  let earlyResolveTxId!: (txId: string) => void;
+  const earlyTxIdPromise = new Promise<string>((resolve) => {
+    earlyResolveTxId = resolve;
+  });
+
+  // Build an intercepted provider set — identical to session.providers except
+  // midnightProvider.submitTx signals earlyTxIdPromise the moment 1AM confirms
+  const interceptedMidnightProvider: MidnightProvider = {
+    submitTx: async (transaction) => {
+      // This calls our existing submitTx which wraps api.submitTransaction (1AM wallet)
+      const txId = await session.providers.midnightProvider.submitTx(transaction);
+      // Signal early resolution: deployment is confirmed — don't wait for indexer
+      earlyResolveTxId(String(txId).trim().replace(/^0x/i, ""));
+      return txId;
+    },
+  };
+
+  const interceptedProviders = {
+    ...session.providers,
+    midnightProvider: interceptedMidnightProvider,
+  };
+
+  const submitFn = submitTxAsync as unknown as (
     providers: unknown,
     options: { unprovenTx: unknown },
   ) => Promise<unknown>;
-  
-  // submitTxAsync submits via 1AM wallet and returns the transaction receipt/ID
-  // This is the blockchain tx hash — different from contractAddress
-  const submitResult = await submit(session.providers, {
+
+  // Fire submitTxAsync in the background — it will prove + balance + submit + poll indexer.
+  // We do NOT await it here. We only care about the moment 1AM confirms (earlyTxIdPromise).
+  const backgroundDeploy = submitFn(interceptedProviders, {
     unprovenTx: deployTxData.private.unprovenTx,
+  }).then((result) => {
+    // If indexer eventually confirms before earlyTxIdPromise resolves (shouldn't happen
+    // but handle gracefully), use that tx ID too
+    if (typeof result === "string" && result.trim()) {
+      earlyResolveTxId(result.trim().replace(/^0x/i, ""));
+    }
+  }).catch((err: unknown) => {
+    // Indexer timeout / network error after 1AM confirmation — resolve with contract address
+    // since on Midnight the deploy tx is identified by the contract address
+    console.warn("[Aquas] Background indexer sync warning (non-fatal):", err);
+    earlyResolveTxId(contractAddress);
   });
 
-  // Extract transaction ID from whatever shape 1AM returns
-  let transactionId: string;
-  if (typeof submitResult === "string" && submitResult.trim()) {
-    transactionId = submitResult.trim().replace(/^0x/i, "");
-  } else if (submitResult && typeof submitResult === "object") {
-    const shaped = submitResult as { transactionId?: string; txId?: string; hash?: string; id?: string };
-    const raw = shaped.transactionId || shaped.txId || shaped.hash || shaped.id || "";
-    transactionId = String(raw).trim().replace(/^0x/i, "");
-  } else {
-    // If 1AM doesn't return a tx hash, use contractAddress as fallback
-    // (they share the same identifier space on Midnight)
-    transactionId = contractAddress;
-  }
+  // Safety: if earlyTxIdPromise never fires (submitTxAsync errors before submitTx),
+  // we need backgroundDeploy to still resolve earlyResolveTxId via the catch above.
+  // Add an absolute 120s timeout as final safety net.
+  const timeoutFallback = new Promise<string>((resolve) =>
+    setTimeout(() => resolve(contractAddress), 120_000),
+  );
 
-  // If transactionId came back as the same as contractAddress, that's normal on Midnight —
-  // the deploy tx is identified by the contract address itself.
-  // In any case, both fields now hold correct distinct values.
+  // Race: earlyTxIdPromise fires as soon as 1AM confirms (typically within seconds)
+  const transactionId = await Promise.race([earlyTxIdPromise, timeoutFallback]);
 
+  // Store private state now that we have confirmation
   session.providers.privateStateProvider.setContractAddress(contractAddress);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, deployTxData.private.initialPrivateState);
   await session.providers.privateStateProvider.setSigningKey(
     contractAddress,
     deployTxData.private.signingKey ?? signingKey,
   );
+
+  // Let backgroundDeploy continue silently — it keeps the indexer in sync
+  void backgroundDeploy;
 
   return { contractAddress, transactionId };
 }

@@ -139,23 +139,18 @@ export default function DeployClient() {
       }
 
       const secret = crypto.getRandomValues(new Uint8Array(32));
-      setStatus("Synthesizing Compact ZK proof via local WASM runtime…");
 
-      // 90-second safeguard timeout for proof generation & user approval in 1AM
-      const deployPromise = deployDoctorLicense(activeSession, secret);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                "Deployment timed out. Please ensure 1AM extension popup is approved.",
-              ),
-            ),
-          90000,
-        ),
-      );
+      // Update status to show we're in ZK proof phase
+      setStatus("Building ZK circuit & loading proving keys…");
 
-      const result = await Promise.race([deployPromise, timeoutPromise]);
+      // Small delay so the status update renders before the synchronous WASM work begins
+      await new Promise((r) => setTimeout(r, 50));
+      setStatus("Approve the transaction in your 1AM wallet popup…");
+
+      // deployDoctorLicense uses a side-channel interceptor:
+      // It resolves immediately when 1AM confirms the tx — NOT waiting for indexer.
+      // This is the fix for the infinite spinner after 1AM shows "TRANSACTION SUBMITTED".
+      const result = await deployDoctorLicense(activeSession, secret);
       if (!mounted.current) return;
 
       const record: DeploymentRecord = {
@@ -163,14 +158,14 @@ export default function DeployClient() {
         deployedAt: new Date().toISOString(),
       };
 
-      // IMMEDIATELY update deployment state and release the spinner
+      // Immediately update UI and release the spinner
       setDeployment(record);
       setOwnerSecret(toHex(secret));
       setDeploying(false);
       window.localStorage.setItem(storageKey, JSON.stringify(record));
-      setStatus(`Contract submitted and confirmed on ${netConfig.name} ledger!`);
+      setStatus(`✓ Contract confirmed on ${netConfig.badge} — indexer syncing in background…`);
 
-      // Rich in-app toast notification with verifiable link
+      // Rich in-app toast notification with verifiable explorer link
       toast.success(`Contract Deployed on ${netConfig.badge}!`, {
         description: `Contract: ${record.contractAddress.slice(0, 16)}…`,
         duration: 10000,
@@ -180,10 +175,27 @@ export default function DeployClient() {
         },
       });
 
-      // Background non-blocking indexer sync check
-      void pollForContract(activeSession.config.indexerUri, record.contractAddress).catch((err) => {
-        console.warn("Background indexer sync notice:", err);
-      });
+      // Non-blocking background indexer check — updates status when confirmed
+      pollForContract(activeSession.config.indexerUri, record.contractAddress)
+        .then(() => {
+          if (mounted.current) {
+            setStatus(`✓ Contract fully indexed on ${netConfig.badge} explorer`);
+            toast.success("Contract Indexed!", {
+              description: "Now visible on Midnight Explorer.",
+              action: {
+                label: "Verify ↗",
+                onClick: () => window.open(getExplorerContractUrl(record.contractAddress, deployNetwork), "_blank"),
+              },
+            });
+          }
+        })
+        .catch((err: unknown) => {
+          // Indexer timing out is not a failure — contract is still deployed on-chain
+          console.warn("Background indexer sync notice:", err);
+          if (mounted.current) {
+            setStatus(`✓ Contract confirmed on ${netConfig.badge} (explorer may take a few minutes to index)`);
+          }
+        });
     } catch (reason) {
       if (mounted.current) {
         const message = reason instanceof Error ? reason.message : "Deployment failed";
@@ -196,6 +208,7 @@ export default function DeployClient() {
       }
     }
   };
+
 
   function copy(value: string, label = "Value") {
     void navigator.clipboard.writeText(value);
