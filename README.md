@@ -216,6 +216,14 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 
 ---
 
+### 14. Confirmed On-Chain Circuit Execution on 1AM Explorer (`proveValidLicense`)
+*1AM Explorer confirmation showing verified execution of zero-knowledge circuit `call: proveValidLicense` at block #643,139 with 100% success rate:*
+
+<img src="./public/Screenshot/Circuit%20Call.png" alt="Circuit Call Confirmed on 1AM Explorer" width="100%" />
+
+---
+
+
 
 
 ## Comprehensive System Architecture
