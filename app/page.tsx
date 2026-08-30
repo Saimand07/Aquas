@@ -15,12 +15,12 @@ import {
   Sparkles,
   Zap,
   Globe,
-  WalletCards,
-  Unplug,
   CircleAlert,
 } from "lucide-react";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
-import { shortId } from "@/lib/license-registry";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ?? "";
 
@@ -34,10 +34,26 @@ function BrandSeal() {
 }
 
 export default function LandingPage() {
+  const router = useRouter();
   const wallet = useMidnightWallet();
   const liveMode = Boolean(CONTRACT_ADDRESS);
-  const connectedLabel = wallet.connected ? shortId(wallet.address ?? "connected") : "Connect 1AM";
   const [demoState, setDemoState] = useState<"idle" | "proving" | "verified">("idle");
+  const [isLaunching, setIsLaunching] = useState(false);
+
+  useEffect(() => {
+    if (isLaunching && wallet.connected) {
+      router.push("/dashboard");
+    }
+  }, [isLaunching, wallet.connected, router]);
+
+  const handleLaunchApp = async () => {
+    if (wallet.connected) {
+      router.push("/dashboard");
+    } else {
+      setIsLaunching(true);
+      await wallet.connect();
+    }
+  };
 
   const runDemoProof = async () => {
     setDemoState("proving");
@@ -54,28 +70,33 @@ export default function LandingPage() {
           <span>Aquas</span>
           <small>MEDICAL REGISTRY</small>
         </Link>
-        <nav aria-label="Primary navigation">
-          <Link href="/" className="active">Home</Link>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/batch">Batch Verifier</Link>
-          <Link href="/explorer">Explorer</Link>
-          <Link href="/ehr">EHR Gateway</Link>
-          <Link href="/pass">Physician Pass</Link>
-          <Link href="/deploy">Deploy</Link>
+        <nav aria-label="Primary navigation" style={{ flex: 1, display: "flex", justifyContent: "flex-end", marginRight: "16px" }}>
+          <button
+            onClick={handleLaunchApp}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 14px",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "var(--seal-brass)",
+              background: "transparent",
+              border: "1px solid var(--seal-brass)",
+              borderRadius: "4px",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+            className="hover-bg-brass"
+          >
+            Launch App
+          </button>
         </nav>
         <div className="network-controls">
           <span className="network-label">
             <i />
             {liveMode ? (wallet.connected ? "PREVIEW · LIVE" : "PREVIEW · OFFLINE") : "SANDBOX"}
           </span>
-          <button
-            className="wallet-button"
-            onClick={wallet.connected ? wallet.disconnect : wallet.connect}
-            disabled={wallet.connecting}
-          >
-            {wallet.connected ? <Unplug size={14} /> : <WalletCards size={14} />}
-            {wallet.connecting ? "Connecting…" : connectedLabel}
-          </button>
         </div>
       </header>
 
@@ -107,13 +128,13 @@ export default function LandingPage() {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", marginBottom: "32px" }}>
-              <Link
-                href="/dashboard"
+              <button
+                onClick={handleLaunchApp}
                 className="notary-cta"
-                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", fontSize: "13px", textDecoration: "none" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", fontSize: "13px", border: "none", cursor: "pointer" }}
               >
-                Launch Command Center <ArrowRight size={15} />
-              </Link>
+                Launch App <ArrowRight size={15} />
+              </button>
               <Link
                 href="/batch"
                 style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 20px", border: "1px solid var(--line)", background: "var(--paper-raised)", fontSize: "13px", color: "var(--ink)", textDecoration: "none", fontWeight: 600 }}
