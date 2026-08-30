@@ -24,16 +24,19 @@
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^4.1.1",
     "@midnight-ntwrk/midnight-js-network-id": "^4.1.1",
     "@midnight-ntwrk/midnight-js-types": "^4.1.1",
+    "framer-motion": "^13.1.1",
     "lucide-react": "^0.468.0",
     "next": "16.2.11",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@emnapi/core": "1.11.3",
     "@emnapi/runtime": "1.11.3",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

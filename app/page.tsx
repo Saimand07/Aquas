@@ -15,12 +15,7 @@ import {
   Sparkles,
   Zap,
   Globe,
-  CircleAlert,
 } from "lucide-react";
-import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
-
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ?? "";
 
@@ -34,26 +29,8 @@ function BrandSeal() {
 }
 
 export default function LandingPage() {
-  const router = useRouter();
-  const wallet = useMidnightWallet();
   const liveMode = Boolean(CONTRACT_ADDRESS);
   const [demoState, setDemoState] = useState<"idle" | "proving" | "verified">("idle");
-  const [isLaunching, setIsLaunching] = useState(false);
-
-  useEffect(() => {
-    if (isLaunching && wallet.connected) {
-      router.push("/dashboard");
-    }
-  }, [isLaunching, wallet.connected, router]);
-
-  const handleLaunchApp = async () => {
-    if (wallet.connected) {
-      router.push("/dashboard");
-    } else {
-      setIsLaunching(true);
-      await wallet.connect();
-    }
-  };
 
   const runDemoProof = async () => {
     setDemoState("proving");
@@ -71,8 +48,8 @@ export default function LandingPage() {
           <small>MEDICAL REGISTRY</small>
         </Link>
         <nav aria-label="Primary navigation" style={{ flex: 1, display: "flex", justifyContent: "flex-end", marginRight: "16px" }}>
-          <button
-            onClick={handleLaunchApp}
+          <Link
+            href="/dashboard"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -84,28 +61,21 @@ export default function LandingPage() {
               background: "transparent",
               border: "1px solid var(--seal-brass)",
               borderRadius: "4px",
-              cursor: "pointer",
+              textDecoration: "none",
               transition: "all 0.2s ease"
             }}
             className="hover-bg-brass"
           >
             Launch App
-          </button>
+          </Link>
         </nav>
         <div className="network-controls">
           <span className="network-label">
             <i />
-            {liveMode ? (wallet.connected ? "PREVIEW · LIVE" : "PREVIEW · OFFLINE") : "SANDBOX"}
+            {liveMode ? "PREVIEW · LIVE" : "SANDBOX"}
           </span>
         </div>
       </header>
-
-      {wallet.error && (
-        <div className="global-message error">
-          <CircleAlert size={15} />
-          {wallet.error}
-        </div>
-      )}
 
       {/* Hero Section */}
       <section style={{ maxWidth: "1280px", margin: "0 auto", padding: "64px 24px 80px" }}>
@@ -128,13 +98,13 @@ export default function LandingPage() {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", marginBottom: "32px" }}>
-              <button
-                onClick={handleLaunchApp}
+              <Link
+                href="/dashboard"
                 className="notary-cta"
-                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", fontSize: "13px", border: "none", cursor: "pointer" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", fontSize: "13px", textDecoration: "none" }}
               >
                 Launch App <ArrowRight size={15} />
-              </button>
+              </Link>
               <Link
                 href="/batch"
                 style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 20px", border: "1px solid var(--line)", background: "var(--paper-raised)", fontSize: "13px", color: "var(--ink)", textDecoration: "none", fontWeight: 600 }}
