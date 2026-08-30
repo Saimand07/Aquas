@@ -26,6 +26,8 @@ export const metadata: Metadata = {
   description: "Verify doctor license status without collecting personal files.",
 };
 
+import { AuthProvider } from "@/context/auth-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,7 +38,9 @@ export default function RootLayout({
       lang="en"
       className={`${bodyFont.variable} ${displayFont.variable} ${dataFont.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

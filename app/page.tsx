@@ -20,15 +20,16 @@ import {
   Sparkles,
   Zap,
   ShieldCheck,
-  CircleAlert,
-  Loader2
+  Loader2,
+  ChevronRight
 } from "lucide-react";
-import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
+import { useAuth } from "@/context/auth-context";
 
-// A simple modern Navbar for the Landing Page
-function Navbar({ onLaunch }: { onLaunch: () => void }) {
+// Modern Frosted Glass Navbar
+function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const wallet = useMidnightWallet();
+  const { isAuthenticated, signOut } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -43,14 +44,14 @@ function Navbar({ onLaunch }: { onLaunch: () => void }) {
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
         scrolled
-          ? "h-16 bg-[rgba(10,10,10,0.85)] backdrop-blur-2xl border-white/[0.06]"
+          ? "h-16 bg-[rgba(10,10,10,0.9)] backdrop-blur-2xl border-white/[0.08]"
           : "h-20 bg-[rgba(10,10,10,0.65)] backdrop-blur-xl border-transparent"
       }`}
     >
       <div className="max-w-[1600px] mx-auto px-6 lg:px-12 h-full flex items-center justify-between">
         {/* Left: Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <ShieldCheck className="w-6 h-6 text-[#3fa96b] transition-colors duration-300" />
+        <Link href="/" className="flex items-center gap-3 group cursor-pointer">
+          <ShieldCheck className="w-7 h-7 text-[#3fa96b] transition-transform duration-300 group-hover:scale-110" />
           <span className="font-mono text-sm tracking-[0.2em] font-bold text-white uppercase">
             <span className="text-[#b08d57]">/</span> AQUAS
           </span>
@@ -58,30 +59,71 @@ function Navbar({ onLaunch }: { onLaunch: () => void }) {
 
         {/* Center: Links (Desktop) */}
         <div className="hidden md:flex items-center gap-8">
-          {["Product", "Use Cases", "Developers", "Pricing", "Docs"].map((label) => (
+          {[
+            { label: "Capabilities", href: "#capabilities" },
+            { label: "Architecture", href: "#architecture" },
+            { label: "Compliance", href: "#compliance" },
+            { label: "Developers", href: "/ehr" },
+          ].map((item) => (
             <Link
-              key={label}
-              href={`#${label.toLowerCase().replace(" ", "-")}`}
+              key={item.label}
+              href={item.href}
               className="text-sm font-medium text-white/70 hover:text-white transition-colors duration-200"
             >
-              {label}
+              {item.label}
             </Link>
           ))}
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/10 text-xs font-mono text-white/70">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#3fa96b]" /> PREPROD ACTIVE
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-white/70">
+            <span className="w-2 h-2 rounded-full bg-[#3fa96b] animate-pulse" />
+            <span>MIDNIGHT PREVIEW</span>
           </div>
-          <button
-            onClick={onLaunch}
-            disabled={wallet.connecting}
-            className="h-9 px-5 flex items-center justify-center gap-2 text-sm font-medium bg-white text-black rounded hover:bg-[#b08d57] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {wallet.connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            Launch App
-          </button>
+
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                style={{
+                  background: "#ffffff",
+                  color: "#000000",
+                  fontWeight: 700
+                }}
+                className="h-9 px-5 flex items-center justify-center gap-1.5 text-xs rounded-lg hover:bg-[#b08d57] transition-colors shadow-lg cursor-pointer"
+              >
+                <span>Console</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                onClick={() => {
+                  signOut();
+                  router.refresh();
+                }}
+                style={{
+                  color: "#a1a1aa",
+                  background: "transparent",
+                  border: "1px solid rgba(255, 255, 255, 0.1)"
+                }}
+                className="h-9 px-3 text-xs rounded-lg hover:text-white hover:border-white/30 transition-colors cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/auth/signin"
+              style={{
+                background: "#ffffff",
+                color: "#000000",
+                fontWeight: 700
+              }}
+              className="h-9 px-5 flex items-center justify-center gap-2 text-xs rounded-lg hover:bg-[#b08d57] transition-colors shadow-lg cursor-pointer"
+            >
+              Launch App
+            </Link>
+          )}
         </div>
       </div>
     </motion.nav>
@@ -91,52 +133,31 @@ function Navbar({ onLaunch }: { onLaunch: () => void }) {
 export default function LandingPage() {
   const containerRef = useRef(null);
   const router = useRouter();
-  const wallet = useMidnightWallet();
-  const [isLaunching, setIsLaunching] = useState(false);
+  const { signInSandbox, isAuthenticated } = useAuth();
   const [demoState, setDemoState] = useState<"idle" | "proving" | "verified">("idle");
-
-  useEffect(() => {
-    if (isLaunching && wallet.connected) {
-      router.push("/dashboard");
-    }
-  }, [isLaunching, wallet.connected, router]);
-
-  const handleLaunchApp = async () => {
-    if (wallet.connected) {
-      router.push("/dashboard");
-    } else {
-      setIsLaunching(true);
-      try {
-        await wallet.connect();
-      } catch {
-        setIsLaunching(false);
-      }
-    }
-  };
 
   const runDemoProof = async () => {
     setDemoState("proving");
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 900));
     setDemoState("verified");
+  };
+
+  const handleInstantSandbox = () => {
+    signInSandbox();
+    router.push("/dashboard");
   };
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#b08d57] selection:text-black font-sans overflow-hidden">
-      <Navbar onLaunch={handleLaunchApp} />
-      
-      {wallet.error && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-xl text-sm font-mono shadow-2xl backdrop-blur-xl">
-          <CircleAlert size={16} />
-          {wallet.error}
-        </div>
-      )}
+      <Navbar />
 
-      {/* 1. HERO: What are we? */}
-      <section className="relative min-h-screen flex flex-col pt-32 pb-20 px-6 lg:px-12 max-w-[1600px] mx-auto">
+      {/* 1. HERO SECTION */}
+      <section className="relative min-h-screen flex flex-col pt-32 pb-20 px-6 lg:px-12 max-w-[1600px] mx-auto justify-center">
         {/* Background glow for hero */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-gradient-to-br from-[#b08d57]/10 via-[#3fa96b]/5 to-transparent blur-[120px] rounded-full pointer-events-none z-0" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[850px] h-[650px] bg-gradient-to-br from-[#b08d57]/15 via-[#3fa96b]/8 to-transparent blur-[140px] rounded-full pointer-events-none z-0" />
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10 my-auto">
+          {/* Left Column */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -144,123 +165,152 @@ export default function LandingPage() {
             className="flex flex-col gap-8"
           >
             <div className="flex flex-col gap-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/10 text-xs font-mono text-[#b08d57] w-fit">
-                <Sparkles size={12} /> MIDNIGHT NETWORK PREVIEW
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/15 text-xs font-mono text-[#b08d57] w-fit shadow-md">
+                <Sparkles size={13} className="text-[#b08d57]" />
+                <span className="font-semibold tracking-wider">MIDNIGHT NETWORK ZERO-KNOWLEDGE LEDGER</span>
               </div>
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05]">
+
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.03]">
                 Zero-Knowledge<br />
                 <span className="text-white/60">Medical Registry,</span><br />
                 for Sovereign Healthcare.
               </h1>
-              <p className="text-lg md:text-xl text-white/50 max-w-xl font-light leading-relaxed">
-                Aquas enables hospitals, EHRs, and state boards to instantly verify physician credentials without exposing personal identifiable information (PII) to the public ledger.
+
+              <p className="text-lg md:text-xl text-white/60 max-w-xl font-light leading-relaxed">
+                Aquas empowers physicians, hospitals, and state medical boards to verify active licensure in under 1 second without exposing personal identifiable information (PII) to the public ledger.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <button 
-                onClick={handleLaunchApp} 
-                disabled={wallet.connecting}
-                className="h-12 px-8 flex items-center justify-center gap-2 bg-white text-black font-medium rounded hover:bg-[#b08d57] transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+            {/* CTAs */}
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <Link
+                href={isAuthenticated ? "/dashboard" : "/auth/signin"}
+                style={{
+                  background: "#ffffff",
+                  color: "#000000",
+                  fontWeight: 700
+                }}
+                className="h-13 px-8 flex items-center justify-center gap-2.5 text-sm rounded-xl hover:bg-[#b08d57] transition-all transform hover:-translate-y-0.5 shadow-2xl cursor-pointer"
               >
-                {wallet.connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch Platform"}
-                {!wallet.connecting && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
-              </button>
-              <Link href="/dashboard" className="h-12 px-8 flex items-center justify-center gap-2 bg-[rgba(20,20,20,0.8)] border border-white/[0.1] text-white font-medium rounded hover:bg-white/[0.05] transition-colors">
-                Explore Dashboard
+                <span>Launch Platform</span>
+                <ArrowRight className="w-4 h-4 text-black" />
               </Link>
+
+              <button
+                type="button"
+                onClick={handleInstantSandbox}
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  color: "#ffffff",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  fontWeight: 600
+                }}
+                className="h-13 px-7 flex items-center justify-center gap-2 text-sm rounded-xl hover:bg-white/10 hover:border-white/40 transition-all cursor-pointer"
+              >
+                <Zap className="w-4 h-4 text-[#3fa96b]" />
+                <span>Interactive Demo Sandbox</span>
+              </button>
             </div>
 
-            <div className="flex flex-wrap gap-4 mt-8">
+            {/* Trust Badges */}
+            <div className="flex flex-wrap gap-3 pt-4">
               {[
-                { icon: Shield, text: "Built on Midnight Blockchain" },
+                { icon: Shield, text: "Compact ZK Circuits" },
                 { icon: Hexagon, text: "Consensus-Enforced" },
                 { icon: EyeOff, text: "HIPAA Safe Harbor" }
               ].map((chip, idx) => (
-                <motion.div
+                <div
                   key={idx}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4 + (idx * 0.1) }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(10,10,10,0.65)] backdrop-blur-xl border border-white/[0.06] text-xs font-medium text-[#3fa96b]"
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.03] border border-white/10 text-xs font-mono text-[#3fa96b]"
                 >
                   <chip.icon className="w-3.5 h-3.5" />
-                  {chip.text}
-                </motion.div>
+                  <span>{chip.text}</span>
+                </div>
               ))}
             </div>
           </motion.div>
 
-          <div className="relative h-[50vh] lg:h-[600px] w-full z-10 flex items-center justify-center">
-            {/* Interactive Live Proof Simulator (Modernized) */}
+          {/* Right Column: Live ZK Simulator */}
+          <div className="relative w-full z-10 flex items-center justify-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.2 }}
-              className="w-full max-w-md p-8 bg-[rgba(12,12,12,0.6)] backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden group"
+              className="w-full max-w-lg p-8 bg-black/60 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-              
               <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
                 <div className="flex items-center gap-3">
-                  <ShieldCheck size={20} className="text-[#3fa96b]" />
-                  <strong className="text-sm font-medium tracking-wide">Live ZK Verification Engine</strong>
+                  <ShieldCheck size={22} className="text-[#3fa96b]" />
+                  <div>
+                    <strong className="text-sm font-semibold tracking-wide block text-white">Live ZK Verification Engine</strong>
+                    <span className="text-[11px] text-zinc-400 font-mono">Proofstation WASM Runtime</span>
+                  </div>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-1 bg-[#3fa96b]/10 text-[#3fa96b] border border-[#3fa96b]/20 rounded-md font-bold">
-                  1AM ACTIVE
+                <span className="text-[10px] font-mono px-2.5 py-1 bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 rounded-lg font-bold">
+                  ACTIVE
                 </span>
               </div>
 
-              <div className="bg-black/40 border border-white/5 rounded-xl p-5 mb-6 font-mono text-xs space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-white/40">Target Commitment:</span>
-                  <span className="text-white/80">e0c9d5…1f70</span>
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-5 mb-6 font-mono text-xs space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Target Commitment:</span>
+                  <span className="text-zinc-200 font-bold bg-white/5 px-2 py-0.5 rounded">0xd5e2…9b74</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/40">Issuing Authority:</span>
-                  <span className="text-white/80">NYS Medical Board</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Issuing Authority:</span>
+                  <span className="text-white">NYS Medical Board</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-white/40">Prover Arch:</span>
-                  <span className="text-white/80">Compact Shielded</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Prover Architecture:</span>
+                  <span className="text-[#b08d57]">Compact Shielded Ledger</span>
                 </div>
               </div>
 
               {demoState === "idle" && (
                 <button
+                  type="button"
                   onClick={runDemoProof}
-                  className="w-full py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-[#b08d57] transition-colors flex items-center justify-center gap-2"
+                  style={{
+                    background: "#ffffff",
+                    color: "#000000",
+                    fontWeight: 700
+                  }}
+                  className="w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-all cursor-pointer"
                 >
-                  <Zap size={16} /> Execute Zero-Knowledge Proof Check
+                  <Zap size={16} className="text-black" />
+                  <span>Execute Zero-Knowledge Proof Check</span>
                 </button>
               )}
 
               {demoState === "proving" && (
-                <div className="w-full py-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center gap-3 text-[#b08d57] font-medium text-sm">
-                  <Loader2 size={16} className="animate-spin" />
-                  Computing cryptographic proof...
+                <div className="w-full py-4 bg-white/[0.04] border border-white/15 rounded-xl flex items-center justify-center gap-3 text-[#b08d57] font-mono text-sm font-semibold">
+                  <Loader2 size={18} className="animate-spin text-[#b08d57]" />
+                  <span>Computing cryptographic proof in WASM…</span>
                 </div>
               )}
 
               {demoState === "verified" && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className="w-full p-5 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-xl"
+                  className="w-full p-5 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl"
                 >
                   <div className="flex items-center gap-2 text-[#3fa96b] mb-4">
                     <CheckCircle2 size={20} />
-                    <strong className="text-sm">PRIMARY SOURCE VERIFIED</strong>
+                    <strong className="text-sm font-bold tracking-wide">PRIMARY SOURCE VERIFIED · ZERO PII EXPOSED</strong>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-[10px] font-mono">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
                     {["✓ Active Licensure", "✓ DEA Schedule II-V", "✓ CME ≥50h", "✓ Clean NPDB Record"].map(t => (
-                      <span key={t} className="px-2 py-1 bg-black/40 border border-white/10 rounded-md text-white/70">{t}</span>
+                      <div key={t} className="px-3 py-1.5 bg-black/50 border border-white/10 rounded-lg text-zinc-200">
+                        {t}
+                      </div>
                     ))}
                   </div>
                   <button
+                    type="button"
                     onClick={() => setDemoState("idle")}
-                    className="mt-4 text-xs text-white/40 hover:text-white underline decoration-white/20 transition-colors"
+                    className="mt-4 text-xs text-zinc-400 hover:text-white underline decoration-white/20 transition-colors cursor-pointer"
                   >
-                    Reset Simulator
+                    Reset Proof Simulator
                   </button>
                 </motion.div>
               )}
@@ -268,18 +318,19 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Live activity ribbon */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 border-t border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-md overflow-hidden flex items-center">
+        {/* Live Activity Ribbon */}
+        <div className="absolute bottom-0 left-0 right-0 h-14 border-t border-white/[0.08] bg-[#0a0a0a]/90 backdrop-blur-md overflow-hidden flex items-center">
           <motion.div 
             animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
             className="flex whitespace-nowrap gap-12 px-6"
           >
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="flex items-center gap-8 text-xs font-mono text-white/40">
+              <div key={i} className="flex items-center gap-8 text-xs font-mono text-zinc-400">
                 <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#b08d57]" /> TX_C92F PROVEN</span>
                 <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#3fa96b]" /> STATE_SYNC_OK</span>
-                <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-white/20" /> HOSPITAL_REQ VERIFIED</span>
+                <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-white/30" /> HOSPITAL_BATCH VERIFIED</span>
+                <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#3fa96b]" /> FHIR_R4_EMIT</span>
               </div>
             ))}
           </motion.div>
@@ -287,9 +338,9 @@ export default function LandingPage() {
       </section>
 
       {/* 2. THE PROBLEM */}
-      <section className="py-32 px-6 max-w-7xl mx-auto border-t border-white/[0.06]">
+      <section id="architecture" className="py-32 px-6 max-w-7xl mx-auto border-t border-white/[0.08]">
         <div className="flex flex-col gap-6 mb-20 text-center">
-          <h2 className="text-3xl md:text-5xl font-medium tracking-tight">The Bottleneck in Medical Credentialing</h2>
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight">The Bottleneck in Medical Credentialing</h2>
           <p className="text-lg text-white/50 max-w-3xl mx-auto">
             Hospital compliance networks rely on manual, centralized verification databases that leak physician PII and take up to 90 days to process.
           </p>
@@ -300,12 +351,12 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="p-10 border border-white/[0.06] bg-[rgba(15,15,15,0.4)] rounded-2xl flex flex-col gap-6"
+            className="p-10 border border-white/[0.08] bg-white/[0.02] rounded-3xl flex flex-col gap-6"
           >
-            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
               <Lock className="w-6 h-6 text-red-400" />
             </div>
-            <h3 className="text-2xl font-medium">The Privacy Deficit</h3>
+            <h3 className="text-2xl font-bold">The Privacy Deficit</h3>
             <p className="text-white/60 leading-relaxed">
               Standard credentialing exposes full names, SSNs, and home addresses across hundreds of disconnected hospital databases, creating massive targets for identity theft.
             </p>
@@ -316,12 +367,12 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="p-10 border border-white/[0.06] bg-[rgba(15,15,15,0.4)] rounded-2xl flex flex-col gap-6"
+            className="p-10 border border-white/[0.08] bg-white/[0.02] rounded-3xl flex flex-col gap-6"
           >
-            <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
               <Globe className="w-6 h-6 text-orange-400" />
             </div>
-            <h3 className="text-2xl font-medium">The Multi-State Friction</h3>
+            <h3 className="text-2xl font-bold">The Multi-State Friction</h3>
             <p className="text-white/60 leading-relaxed">
               Cross-state practice (IMLC) requires redundant verification. Each state maintains siloed registries, delaying critical care deployments by months.
             </p>
@@ -330,18 +381,18 @@ export default function LandingPage() {
       </section>
 
       {/* 3. KEY CAPABILITIES */}
-      <section className="py-32 px-6 max-w-7xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-medium tracking-tight mb-6 text-center">Enterprise ZK Capabilities</h2>
+      <section id="capabilities" className="py-32 px-6 max-w-7xl mx-auto border-t border-white/[0.08]">
+        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 text-center">Enterprise ZK Capabilities</h2>
         <p className="text-lg text-white/50 max-w-3xl mx-auto text-center mb-20">
           Aquas natively integrates Midnight&apos;s core ZK capabilities into a unified hospital credentialing infrastructure.
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
-            { title: "Hospital Batch Verifier", subtitle: "Instant Compliance", icon: FileCheck2, desc: "Upload hundreds of physician records simultaneously. Verify on-chain status in parallel and export audit-ready regulatory compliance packages (CSV/JSON/PDF)." },
-            { title: "HL7® FHIR® R4 Gateway", subtitle: "Native EHR Integration", icon: Server, desc: "Direct plug-and-play integration for Epic Systems, Cerner, and Meditech. Returns compliant VerificationResult resources." },
-            { title: "Live ZK Explorer", subtitle: "Real-time Telemetry", icon: Activity, desc: "Real-time network telemetry, smart contract state commits, on-chain block indexes, and early radar warnings for expirations." },
-            { title: "Mobile Physician Pass", subtitle: "Offline Verification", icon: Smartphone, desc: "Carry a cryptographically signed mobile pass with 30-second rotating anti-screenshot challenges for underground surgical bunkers." }
+            { title: "Hospital Batch Verifier", subtitle: "Instant Compliance", icon: FileCheck2, desc: "Upload hundreds of physician records simultaneously. Verify on-chain status in parallel and export audit-ready regulatory compliance packages (CSV/JSON/PDF).", href: "/batch" },
+            { title: "HL7® FHIR® R4 Gateway", subtitle: "Native EHR Integration", icon: Server, desc: "Direct plug-and-play integration for Epic Systems, Cerner, and Meditech. Returns compliant VerificationResult resources.", href: "/ehr" },
+            { title: "Live ZK Explorer", subtitle: "Real-time Telemetry", icon: Activity, desc: "Real-time network telemetry, smart contract state commits, on-chain block indexes, and early radar warnings for expirations.", href: "/explorer" },
+            { title: "Mobile Physician Pass", subtitle: "Offline Verification", icon: Smartphone, desc: "Carry a cryptographically signed mobile pass with 30-second rotating anti-screenshot challenges for underground surgical bunkers.", href: "/pass" }
           ].map((feat, i) => (
             <motion.div
               key={feat.title}
@@ -349,46 +400,74 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="p-8 bg-[rgba(12,12,12,0.7)] backdrop-blur-xl border border-white/[0.06] rounded-xl hover:bg-[rgba(15,15,15,0.9)] hover:border-white/[0.1] transition-all flex flex-col gap-4"
+              className="p-8 bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-3xl hover:bg-white/[0.05] hover:border-white/20 transition-all flex flex-col justify-between gap-4"
             >
-              <div className="flex items-center gap-4 mb-2">
-                <div className="p-3 bg-white/[0.03] rounded-lg">
-                  <feat.icon className="w-6 h-6 text-[#b08d57]" />
+              <div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 bg-white/[0.05] border border-white/10 rounded-2xl">
+                    <feat.icon className="w-6 h-6 text-[#b08d57]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-white">{feat.title}</h3>
+                    <p className="text-xs text-white/40 font-mono">{feat.subtitle}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-lg text-white/90">{feat.title}</h3>
-                  <p className="text-sm text-white/40 font-mono">{feat.subtitle}</p>
-                </div>
+                <p className="text-white/60 leading-relaxed text-sm">{feat.desc}</p>
               </div>
-              <p className="text-white/60 leading-relaxed">{feat.desc}</p>
+
+              <Link
+                href={feat.href}
+                className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[#3fa96b] hover:text-white transition-colors pt-2"
+              >
+                <span>Launch {feat.title}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* 4. FINAL CTA */}
-      <section className="py-32 px-6 text-center border-t border-white/[0.06] bg-[rgba(5,5,5,1)] relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#3fa96b]/[0.02] blur-[120px] rounded-full pointer-events-none" />
+      <section id="compliance" className="py-32 px-6 text-center border-t border-white/[0.08] bg-[#050505] relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#3fa96b]/[0.03] blur-[120px] rounded-full pointer-events-none" />
         
         <div className="relative z-10 flex flex-col items-center">
-          <h2 className="text-4xl md:text-6xl font-medium tracking-tight mb-10">Give your doctors privacy.</h2>
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8">Give your doctors privacy.</h2>
+          <p className="text-zinc-400 max-w-xl text-base mb-10">
+            Start verifying credentials with sub-second zero-knowledge proof checks on the Midnight Privacy Blockchain.
+          </p>
+
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <button 
-              onClick={handleLaunchApp}
-              disabled={wallet.connecting}
-              className="h-12 px-8 flex items-center justify-center bg-white text-black font-medium rounded hover:bg-[#b08d57] transition-colors disabled:opacity-50"
+            <Link
+              href="/auth/signin"
+              style={{
+                background: "#ffffff",
+                color: "#000000",
+                fontWeight: 700
+              }}
+              className="h-13 px-8 flex items-center justify-center text-sm rounded-xl hover:bg-[#b08d57] transition-all shadow-xl cursor-pointer"
             >
-              {wallet.connecting ? "Connecting..." : "Launch Enterprise Platform"}
-            </button>
-            <Link href="/ehr" className="h-12 px-8 flex items-center justify-center border border-white/[0.1] text-white font-medium rounded hover:bg-white/[0.05] transition-colors gap-2">
-              <Terminal className="w-4 h-4" /> EHR Developer Docs
+              Launch Enterprise Platform
+            </Link>
+
+            <Link
+              href="/ehr"
+              style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 255, 255, 0.15)"
+              }}
+              className="h-13 px-8 flex items-center justify-center text-sm rounded-xl hover:bg-white/10 transition-colors gap-2 cursor-pointer font-medium"
+            >
+              <Terminal className="w-4 h-4" />
+              <span>EHR Developer Docs</span>
             </Link>
           </div>
         </div>
       </section>
 
       {/* 5. FOOTER */}
-      <footer className="px-6 py-12 border-t border-white/[0.06] bg-black">
+      <footer className="px-6 py-12 border-t border-white/[0.08] bg-black">
         <div className="max-w-[1600px] mx-auto flex flex-col gap-12">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <Link href="/" className="flex items-center gap-3">
@@ -399,17 +478,17 @@ export default function LandingPage() {
             </Link>
             
             <div className="flex flex-wrap gap-x-8 gap-y-4 items-center">
-              <a href="https://github.com/Saimand07/Aquas" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">GitHub Repository</a>
-              <a href="https://preview.midnightexplorer.com" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Midnight Explorer</a>
-              <Link href="/dashboard" className="text-sm text-white/50 hover:text-white transition-colors">Dashboard</Link>
+              <a href="https://github.com/Saimand07/Aquas" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-white transition-colors">GitHub Repository</a>
+              <a href="https://preview.midnightexplorer.com" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-white transition-colors">Midnight Explorer</a>
+              <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">Dashboard</Link>
             </div>
           </div>
           
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-8 border-t border-white/[0.06] text-xs text-white/30">
-            <div>© {new Date().getFullYear()} Aquas Medical Registry. All rights reserved.</div>
-            <div className="flex items-center gap-2 border border-white/[0.1] px-3 py-1.5 rounded bg-white/[0.02]">
-              <Globe className="w-3 h-3" />
-              Built on Midnight
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-8 border-t border-white/[0.08] text-xs text-zinc-500 font-mono">
+            <div>© {new Date().getFullYear()} Aquas Medical Registry. Built on Midnight.</div>
+            <div className="flex items-center gap-2 border border-white/10 px-3 py-1.5 rounded-lg bg-white/[0.02]">
+              <Globe className="w-3 h-3 text-[#3fa96b]" />
+              <span>Preview Testnet Active</span>
             </div>
           </div>
         </div>

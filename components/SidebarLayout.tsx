@@ -11,13 +11,13 @@ import {
   Rocket,
   ShieldCheck,
   Unplug,
-  WalletCards,
-  CircleAlert
+  CircleAlert,
+  UserCheck
 } from "lucide-react";
-import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { shortId } from "@/lib/license-registry";
 import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 
 const NAV_ITEMS = [
   { label: "Command Center", icon: LayoutDashboard, href: "/dashboard" },
@@ -33,44 +33,49 @@ const emptySubscribe = () => () => {};
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const wallet = useMidnightWallet();
-  const connectedLabel = wallet.connected ? shortId(wallet.address ?? "connected") : "Connect 1AM";
-  const liveMode = Boolean(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim());
-  
+  const {
+    isAuthenticated,
+    user,
+    walletAddress,
+    authType,
+    signOut,
+    error: authError
+  } = useAuth();
+
   const isMounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
 
-  // If wallet is not connected, redirect to home page for authentication
+  // If not authenticated, redirect to /auth/signin
   useEffect(() => {
-    // Adding a slight delay to allow wallet init to complete
-    const timer = setTimeout(() => {
-      if (!wallet.connected && !wallet.connecting) {
-        router.push("/");
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [wallet.connected, wallet.connecting, router]);
+    if (isMounted && !isAuthenticated) {
+      router.replace("/auth/signin");
+    }
+  }, [isMounted, isAuthenticated, router]);
 
-  if (!isMounted || (!wallet.connected && !wallet.connecting)) {
-    return null; // Don't render dashboard if not authenticated or not mounted
+  if (!isMounted || !isAuthenticated) {
+    return null; // Don't flash dashboard if unauthenticated
   }
+
+  const userInitial = user?.name ? user.name.charAt(0) : "A";
+  const userDisplayName = user?.name || "Dr. Sarah Lin, MD";
+  const userSubtitle = user?.role || (authType === "wallet" ? "1AM Verified Node" : "Authorized Session");
+  const connectedAddressLabel = walletAddress ? shortId(walletAddress) : "Sandbox Mode";
 
   return (
     <div className="relative min-h-screen bg-[#03040a] text-white flex overflow-hidden font-sans" style={{ colorScheme: "dark" }}>
-      
       {/* Background Orbs */}
       <div className="fixed -top-32 left-1/3 w-[650px] h-[650px] bg-gradient-to-br from-[#b08d57]/10 via-[#3fa96b]/5 to-transparent rounded-full blur-[140px] pointer-events-none z-0" />
       <div className="fixed -bottom-20 right-1/4 w-[550px] h-[550px] bg-gradient-to-tl from-[#101010]/20 via-[#b08d57]/10 to-transparent rounded-full blur-[140px] pointer-events-none z-0" />
 
       {/* Sidebar */}
       <div className="relative w-64 bg-black/60 backdrop-blur-2xl border-r border-white/10 flex flex-col z-40">
-        <div className="h-20 flex items-center gap-3 px-6 border-b border-white/10">
+        <Link href="/" className="h-20 flex items-center gap-3 px-6 border-b border-white/10 group cursor-pointer">
           <ShieldCheck className="w-6 h-6" style={{ color: "var(--verified-mint)" }} />
           <span className="font-bold tracking-[0.15em] text-lg text-white">AQUAS</span>
-        </div>
+        </Link>
 
         <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1.5">
           {NAV_ITEMS.map((item) => {
@@ -95,20 +100,24 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           })}
         </div>
 
+        {/* User Card */}
         <div className="p-4 border-t border-white/10">
-          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-all cursor-pointer">
+          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-all">
             <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
               <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0 text-xs font-mono font-bold" style={{ color: "var(--seal-brass)" }}>
-                A
+                {userInitial}
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-zinc-200 truncate group-hover:text-white transition-colors">Admin Session</div>
-                <div className="text-[11px] text-zinc-500 truncate font-mono">Verified Node</div>
+                <div className="text-xs font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{userDisplayName}</div>
+                <div className="text-[10px] text-zinc-500 truncate font-mono">{userSubtitle}</div>
               </div>
             </div>
             <button 
-              onClick={() => { wallet.disconnect(); router.push('/'); }}
-              className="p-1.5 text-zinc-400 hover:text-white transition-colors ml-1"
+              onClick={() => {
+                signOut();
+                router.push('/');
+              }}
+              className="p-1.5 text-zinc-400 hover:text-red-400 transition-colors ml-1 cursor-pointer"
               title="Sign Out"
             >
               <Unplug className="w-4 h-4" />
@@ -128,30 +137,24 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           </div>
           
           <div className="flex items-center gap-4">
-            {wallet.error && <div className="text-xs text-red-400 flex items-center gap-1"><CircleAlert size={12}/>{wallet.error}</div>}
+            {authError && <div className="text-xs text-red-400 flex items-center gap-1"><CircleAlert size={12}/>{authError}</div>}
             
             <div className="flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl p-1 text-xs">
-              <span className="text-[10px] text-zinc-400 uppercase font-mono px-2">Net:</span>
-              <span className="px-3 py-1 rounded-lg font-mono text-xs bg-white/10 text-white font-semibold">
-                {liveMode ? "PREPROD" : "SANDBOX"}
+              <span className="text-[10px] text-zinc-400 uppercase font-mono px-2">Mode:</span>
+              <span className="px-3 py-1 rounded-lg font-mono text-xs bg-white/10 text-white font-semibold uppercase">
+                {authType || "PREVIEW"}
               </span>
             </div>
 
-            <button 
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-xs font-mono text-white/80"
-              onClick={wallet.connected ? wallet.disconnect : wallet.connect}
-              disabled={wallet.connecting}
-            >
-              {wallet.connected ? <Unplug size={14} /> : <WalletCards size={14} />}
-              {wallet.connecting ? "Connecting…" : connectedLabel}
-            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-xs font-mono text-white/80">
+              <UserCheck size={14} className="text-[#3fa96b]" />
+              <span>{connectedAddressLabel}</span>
+            </div>
           </div>
         </header>
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto w-full relative p-8">
-          {/* The children components (our existing pages) will render here.
-              We apply a wrapper that enforces Luma's clean transparent styling over our existing styles. */}
           <div className="dashboard-content-wrapper h-full">
             {children}
           </div>
