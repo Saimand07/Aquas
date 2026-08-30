@@ -20,6 +20,7 @@ import {
 import NetworkMetricsCard from "@/components/NetworkMetricsCard";
 import ExpirationRadar from "@/components/ExpirationRadar";
 import ActivityFeed from "@/components/ActivityFeed";
+import CircuitCallWorkbench from "@/components/CircuitCallWorkbench";
 
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ?? "";
 
@@ -153,6 +154,9 @@ export default function ExplorerPage() {
           badge="ONLINE"
         />
       </div>
+
+      {/* Interactive Compact Circuit Invoker (Hit Circuit Call) */}
+      <CircuitCallWorkbench />
 
       {/* Analytics & Radar Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

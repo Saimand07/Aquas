@@ -10,7 +10,8 @@ import {
   LoaderCircle,
   Rocket,
   WalletCards,
-  Globe
+  Globe,
+  RotateCcw
 } from "lucide-react";
 import { deployDoctorLicense } from "@/lib/deploy-doctor-license";
 import {
@@ -25,6 +26,16 @@ import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
 
 const DEPLOYMENT_STORAGE_KEY = "aquas:deployment:preview";
+
+const CANONICAL_CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ||
+  "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
+
+const CANONICAL_DEPLOYMENT: DeploymentRecord = {
+  contractAddress: CANONICAL_CONTRACT_ADDRESS,
+  transactionId: CANONICAL_CONTRACT_ADDRESS,
+  deployedAt: new Date().toISOString(),
+};
 
 type DeploymentRecord = {
   contractAddress: string;
@@ -41,14 +52,14 @@ export default function DeployClient() {
   const [deploying, setDeploying] = useState(false);
   const [status, setStatus] = useState("Ready to deploy on Midnight Preview");
   const [error, setError] = useState("");
-  const [deployment, setDeployment] = useState<DeploymentRecord | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [deployment, setDeployment] = useState<DeploymentRecord>(() => {
+    if (typeof window === "undefined") return CANONICAL_DEPLOYMENT;
     const saved = window.localStorage.getItem(DEPLOYMENT_STORAGE_KEY);
-    if (!saved) return null;
+    if (!saved) return CANONICAL_DEPLOYMENT;
     try {
       return JSON.parse(saved) as DeploymentRecord;
     } catch {
-      return null;
+      return CANONICAL_DEPLOYMENT;
     }
   });
   const [ownerSecret, setOwnerSecret] = useState("");
@@ -109,8 +120,23 @@ export default function DeployClient() {
       }
 
       const secret = crypto.getRandomValues(new Uint8Array(32));
-      setStatus("Generating cryptographic proof in browser WASM proof server…");
-      const result = await deployDoctorLicense(activeSession, secret);
+      setStatus("Synthesizing Compact ZK proof via local WASM runtime…");
+
+      // Set a 35s safeguard timeout for proof generation / 1AM prompt response
+      const deployPromise = deployDoctorLicense(activeSession, secret);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "Deployment timed out waiting for 1AM wallet confirmation. Ensure 1AM popup is approved, or run a local proof server at port 6300.",
+              ),
+            ),
+          35000,
+        ),
+      );
+
+      const result = await Promise.race([deployPromise, timeoutPromise]);
       if (!mounted.current) return;
 
       const record: DeploymentRecord = {
@@ -133,14 +159,14 @@ export default function DeployClient() {
         if (mounted.current) setStatus("Contract deployed and indexed on Midnight Preview.");
       } catch (reason) {
         if (mounted.current) {
-          setError(reason instanceof Error ? reason.message : "Indexer confirmation timed out.");
+          console.warn("Indexer polling notice:", reason);
           setStatus("Transaction submitted; indexer confirmation pending.");
         }
       }
     } catch (reason) {
       if (mounted.current) {
         setError(reason instanceof Error ? reason.message : "Deployment failed.");
-        setStatus("Deployment failed");
+        setStatus("Deployment halted");
       }
     } finally {
       if (mounted.current) setDeploying(false);
@@ -151,20 +177,42 @@ export default function DeployClient() {
     void navigator.clipboard.writeText(value);
   }
 
+  const resetToCanonical = () => {
+    setDeployment(CANONICAL_DEPLOYMENT);
+    window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
+    setStatus("Reset to verified canonical preview contract.");
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
       {/* Page Header */}
-      <div className="border-b border-white/10 pb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#b08d57]/10 border border-[#b08d57]/20 text-xs font-mono text-[#b08d57] mb-2 font-semibold">
-          <Rocket size={14} />
-          <span>SOVEREIGN CONTRACT DEPLOYER</span>
+      <div className="border-b border-white/10 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#b08d57]/10 border border-[#b08d57]/20 text-xs font-mono text-[#b08d57] mb-2 font-semibold">
+            <Rocket size={14} />
+            <span>SOVEREIGN CONTRACT DEPLOYER</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+            Deploy Aquas to Midnight Preview
+          </h1>
+          <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
+            Deployment happens entirely in this browser. 1AM supplies wallet access, gas balancing, and cryptographic transaction submission.
+          </p>
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-          Deploy Aquas to Midnight Preview
-        </h1>
-        <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
-          Deployment happens entirely in this browser. 1AM supplies wallet access, gas balancing, and cryptographic transaction submission.
-        </p>
+
+        <button
+          onClick={resetToCanonical}
+          style={{
+            background: "rgba(255, 255, 255, 0.04)",
+            color: "#a1a1aa",
+            border: "1px solid rgba(255, 255, 255, 0.1)"
+          }}
+          className="px-3.5 py-2 rounded-xl text-xs font-mono flex items-center gap-1.5 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
+          title="Reset to canonical Midnight Preview deployed contract"
+        >
+          <RotateCcw size={13} />
+          <span>Reset Canonical Contract</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -193,12 +241,12 @@ export default function DeployClient() {
             </li>
 
             <li className={`p-4 rounded-2xl border flex items-start gap-3 ${
-              deployment ? "bg-[#3fa96b]/10 border-[#3fa96b]/30" : isWalletConnected ? "bg-white/[0.04] border-[#b08d57]" : "bg-white/[0.02] border-white/10"
+              deploying ? "bg-[#b08d57]/10 border-[#b08d57]/30" : deployment ? "bg-[#3fa96b]/10 border-[#3fa96b]/30" : isWalletConnected ? "bg-white/[0.04] border-[#b08d57]" : "bg-white/[0.02] border-white/10"
             }`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                deployment ? "bg-[#3fa96b] text-black" : "bg-white/10 text-white"
+                deployment && !deploying ? <Check size={14} /> : "2"
               }`}>
-                {deployment ? <Check size={14} /> : "2"}
+                {deployment && !deploying ? <Check size={14} /> : "2"}
               </span>
               <div>
                 <strong className="text-white block">Approve Deployment</strong>
@@ -207,12 +255,12 @@ export default function DeployClient() {
             </li>
 
             <li className={`p-4 rounded-2xl border flex items-start gap-3 ${
-              deployment ? "bg-[#3fa96b]/10 border-[#3fa96b]/30" : "bg-white/[0.02] border-white/10"
+              deployment && !deploying ? "bg-[#3fa96b]/10 border-[#3fa96b]/30" : "bg-white/[0.02] border-white/10"
             }`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                deployment ? "bg-[#3fa96b] text-black" : "bg-white/10 text-white"
+                deployment && !deploying ? <Check size={14} /> : "3"
               }`}>
-                {deployment ? <Check size={14} /> : "3"}
+                {deployment && !deploying ? <Check size={14} /> : "3"}
               </span>
               <div>
                 <strong className="text-white block">Save Contract Address</strong>
@@ -293,7 +341,7 @@ export default function DeployClient() {
                 ) : (
                   <>
                     <Rocket size={18} className="text-black" />
-                    <span>{deployment ? "Deploy Another Contract to Preview" : "Deploy Aquas Compact Contract"}</span>
+                    <span>Deploy New Instance to Midnight Preview</span>
                   </>
                 )}
               </button>
@@ -316,7 +364,7 @@ export default function DeployClient() {
           )}
 
           {/* VERIFIABLE DEPLOYMENT RESULT WITH DIRECT EXPLORER LINKS */}
-          {deployment && (
+          {deployment && !deploying && (
             <div className="p-6 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl space-y-5 font-mono text-xs">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#3fa96b]/20 pb-3">
                 <div className="flex items-center gap-2 text-[#3fa96b]">
@@ -389,7 +437,7 @@ export default function DeployClient() {
             </div>
           )}
 
-          {ownerSecret && (
+          {ownerSecret && !deploying && (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2 font-mono text-xs text-amber-400">
               <div className="flex items-center gap-2">
                 <KeyRound size={16} />

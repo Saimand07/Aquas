@@ -1,4 +1,4 @@
-﻿import type { OnChainRegistry, OnChainRegistryRecord } from "./midnight-read";
+import type { OnChainRegistry, OnChainRegistryRecord } from "./midnight-read";
 import { shortId } from "./license-registry";
 
 export interface NetworkKPIs {
@@ -62,7 +62,6 @@ export function calculateNetworkKPIs(
   const revocationRate =
     totalIssued > 0 ? Math.round((revokedLicenses / totalIssued) * 1000) / 10 : 0;
 
-  // Network integrity score is calculated based on active ratio and board trust
   const networkIntegrityScore =
     totalIssued > 0 ? Math.max(0, Math.min(100, 100 - revocationRate)) : 100;
 
@@ -158,7 +157,7 @@ export function formatTimeAgo(timestampSeconds: number, nowSeconds = Math.floor(
 }
 
 /**
- * Builds a chronological simulated or derived feed of on-chain network events.
+ * Builds a chronological feed of on-chain network events.
  */
 export function generateActivityFeed(
   records: OnChainRegistryRecord[],
@@ -166,6 +165,9 @@ export function generateActivityFeed(
 ): NetworkActivityEvent[] {
   const events: NetworkActivityEvent[] = [];
   const now = Math.floor(Date.now() / 1000);
+  const explorerUrl = contractAddress
+    ? `https://preview.midnightexplorer.com/contract/${contractAddress}`
+    : undefined;
 
   records.forEach((r, idx) => {
     if (r.revoked) {
@@ -177,9 +179,7 @@ export function generateActivityFeed(
         timestamp: new Date((r.issuedAt || now) * 1000).toISOString(),
         timeAgo: formatTimeAgo(r.issuedAt || now, now),
         credentialId: r.credentialId,
-        blockExplorerUrl: contractAddress
-          ? `https://preview.midnightexplorer.com/contracts/${contractAddress}`
-          : undefined,
+        blockExplorerUrl: explorerUrl,
       });
     } else {
       events.push({
@@ -190,9 +190,7 @@ export function generateActivityFeed(
         timestamp: new Date((r.issuedAt || now) * 1000).toISOString(),
         timeAgo: formatTimeAgo(r.issuedAt || now, now),
         credentialId: r.credentialId,
-        blockExplorerUrl: contractAddress
-          ? `https://preview.midnightexplorer.com/contracts/${contractAddress}`
-          : undefined,
+        blockExplorerUrl: explorerUrl,
       });
     }
   });
