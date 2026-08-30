@@ -73,18 +73,43 @@ function extractCredentialId(value: string) {
   return value.match(/[0-9a-fA-F]{64}/)?.[0] ?? value.trim();
 }
 
+const DEFAULT_INITIAL_RECORDS: LicenseRecord[] = [
+  {
+    id: "d1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244",
+    doctorLabel: "Dr. Sarah Lin, MD",
+    licenseNumber: "NYS-84920",
+    board: "New York State Medical Board",
+    specialty: "Diagnostic Radiology & Oncology",
+    issuedAt: "2024-01-15",
+    expiresAt: "2027-01-15",
+    status: "valid",
+  },
+  {
+    id: "92476195ca0e467aa187ef9191419c9d42b85e17bc28ad495ca7345bd250537b",
+    doctorLabel: "Dr. Marcus Chen, MD",
+    licenseNumber: "MD-CA-99201",
+    board: "Medical Board of California",
+    specialty: "Cardiology",
+    issuedAt: "2023-06-01",
+    expiresAt: "2026-06-01",
+    status: "valid",
+  },
+];
+
 export default function DashboardCommandCenter() {
   const [workspace, setWorkspace] = useState<Workspace>("verify");
   const [records, setRecords] = useState<LicenseRecord[]>(() => {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") return DEFAULT_INITIAL_RECORDS;
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
+    if (!saved) return DEFAULT_INITIAL_RECORDS;
     try {
-      return JSON.parse(saved) as LicenseRecord[];
+      const parsed = JSON.parse(saved) as LicenseRecord[];
+      return parsed.length > 0 ? parsed : DEFAULT_INITIAL_RECORDS;
     } catch {
-      return [];
+      return DEFAULT_INITIAL_RECORDS;
     }
   });
+
   const [credentialId, setCredentialId] = useState("");
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [history, setHistory] = useState<CheckEntry[]>(() => {
@@ -159,8 +184,9 @@ export default function DashboardCommandCenter() {
     }
 
     try {
-      const resp = await fetch(`/api/license?id=${encodeURIComponent(cleanId)}`);
-      const payload = await resp.json();
+      const url = `/api/license?id=${encodeURIComponent(cleanId)}&network=${auth.currentNetwork}&contractAddress=${encodeURIComponent(activeContract)}`;
+      const resp = await fetch(url);
+      const payload = await resp.json().catch(() => ({ found: false }));
       
       const localRec: LicenseRecord | undefined = records.find(r => r.id.toLowerCase() === cleanId.toLowerCase());
       const checkedTimestamp = new Date().toISOString();
@@ -218,11 +244,24 @@ export default function DashboardCommandCenter() {
 
       setResult(checkResult);
     } catch {
-      setNotice("Could not connect to verification indexer. Check network.");
+      const localRec = records.find(r => r.id.toLowerCase() === cleanId.toLowerCase());
+      if (localRec) {
+        setResult({
+          found: true,
+          status: effectiveStatus(localRec),
+          record: localRec,
+        });
+      } else {
+        setResult({
+          found: false,
+          status: "not-found",
+        });
+      }
     } finally {
       setBusy(false);
     }
   };
+
 
   const handleGenerateProof = () => {
     if (!activeRecord) return;
@@ -438,7 +477,7 @@ export default function DashboardCommandCenter() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setCredentialId("0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74")}
+                    onClick={() => setCredentialId("d1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244")}
                     style={{
                       background: "rgba(255, 255, 255, 0.04)",
                       color: "#a1a1aa",
@@ -448,6 +487,7 @@ export default function DashboardCommandCenter() {
                   >
                     Sample NY License
                   </button>
+
                   {records[0] && (
                     <button
                       type="button"
