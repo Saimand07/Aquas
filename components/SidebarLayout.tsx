@@ -38,13 +38,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // Luma-style Auth Protection:
-  // If wallet is not connected, redirect to /auth/signin
+  // If wallet is not connected, redirect to home page for authentication
   useEffect(() => {
     // Adding a slight delay to allow wallet init to complete
     const timer = setTimeout(() => {
       if (!wallet.connected && !wallet.connecting) {
-        router.push("/auth/signin");
+        router.push("/");
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -103,7 +102,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               </div>
             </div>
             <button 
-              onClick={() => { wallet.disconnect(); router.push('/auth/signin'); }}
+              onClick={() => { wallet.disconnect(); router.push('/'); }}
               className="p-1.5 text-zinc-400 hover:text-white transition-colors ml-1"
               title="Sign Out"
             >
