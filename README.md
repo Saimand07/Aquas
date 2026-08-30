@@ -220,18 +220,130 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 
 <img src="./public/Screenshot/CI%20CD.png" alt="CI CD Pipeline" width="100%" />
 
+---
+
+### 13. Network Explorer, Real-Time Telemetry & Circuit Call Workbench
+*Real-time on-chain telemetry, state commit analytics, and live Compact circuit execution workbench connected to 1AM Proofstation:*
+
+<img src="./public/Screenshot/ZK%20Explorer.png" alt="ZK Explorer and Circuit Workbench" width="100%" />
 
 ---
 
-## System Architecture & Project Structure
 
-### Tech Stack
-* **Blockchain Network:** Midnight Network (Preview Testnet)
-* **Smart Contracts:** Compact (Midnight's native ZK language)
-* **Web3 Integration:** `@midnight-ntwrk/compact-runtime`, `@midnight-ntwrk/dapp-connector-api`, `@midnight-ntwrk/midnight-js-contracts`, `1AM Wallet`
-* **Frontend:** Next.js 16 (App Router), React 19, Tailwind CSS v4, Framer Motion, Lucide React, QRCode React
-* **ZK & Proving Pipeline:** Midnight Prover Server, WASM Proving Runtime, Compact JS Compiler
-* **Testing:** Vitest Test Suite (9 Test Suites, 44 Automated Unit & ZK Prover Tests)
+
+## Comprehensive System Architecture
+
+Aquas is built on a multi-tier, zero-knowledge healthcare architecture designed for strict HIPAA compliance, mathematical privacy guarantees, and instant cross-institutional verifiability on the Midnight Network.
+
+### High-Level System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Client_Layer ["1. Client & Application Layer (Physician & Hospital)"]
+        UI_Landing["Landing Page & Command Center<br/>Next.js 16 + React 19"]
+        UI_Desk["Hospital Verification Desk<br/>(0-Byte PII Disclosure)"]
+        UI_Batch["Enterprise Batch Verifier<br/>(Parallel ZK Verifications)"]
+        UI_Pass["Dynamic Physician Pass<br/>(HMAC-SHA256 Offline TOTP)"]
+        UI_Deploy["In-App Sovereign Deployer<br/>(Multi-Network Preview/Preprod)"]
+    end
+
+    subgraph Web3_Layer ["2. Web3 & 1AM DApp Connector Layer"]
+        Wallet_Hook["useMidnightWallet Hook<br/>(Connection & Balance Manager)"]
+        Connector["1AM DApp Connector API<br/>(@midnight-ntwrk/dapp-connector-api)"]
+        Witness_Builder["Private Witness Assembler<br/>(Payload + Nonce + Salt)"]
+        Tx_Interceptor["Async Tx Submission Interceptor<br/>(1AM Approval Popup Binding)"]
+    end
+
+    subgraph ZK_Engine ["3. Zero-Knowledge Proving & Compact Engine"]
+        Proofstation["1AM Proofstation / Local Prover<br/>(Halo2 SNARK Synthesizer)"]
+        Compact_Runtime["Compact Runtime 0.16.0<br/>(@midnight-ntwrk/compact-runtime)"]
+        ZKIR_Artifacts["Managed ZKIR Circuits & Prover Keys<br/>(createBoard, createLicense, proveValidLicense, deleteLicense)"]
+        Pedersen_Module["Pedersen Commitment & SHA-256 Engine"]
+    end
+
+    subgraph Ledger_Layer ["4. Midnight Dual-State Blockchain & Indexer"]
+        Shielded_State["Midnight Shielded State<br/>(Private Witness Assertions)"]
+        Public_Ledger["Midnight Public Ledger<br/>(trustedBoards, issuedLicenses, revokedLicenses)"]
+        GraphQL_Indexer["Midnight GraphQL Indexer / Subsystem<br/>(Block & State Commit Sync)"]
+        Explorer["1AM & Midnight Explorers<br/>(Preview & Preprod Verification)"]
+    end
+
+    subgraph Enterprise_Gateway ["5. Enterprise Healthcare Gateway & EHR"]
+        FHIR_Adapter["HL7 FHIR R4 Adapter<br/>(/api/ehr/verify)"]
+        Webhook_Dispatcher["Revocation Webhook Dispatcher<br/>(/api/webhooks/subscribe)"]
+        Audit_Exporter["Compliance Audit Exporter<br/>(CSV / JSON Cryptographic Proofs)"]
+    end
+
+    Client_Layer --> Web3_Layer
+    Web3_Layer --> ZK_Engine
+    ZK_Engine --> Ledger_Layer
+    Ledger_Layer --> GraphQL_Indexer
+    GraphQL_Indexer --> Enterprise_Gateway
+    Enterprise_Gateway --> UI_Desk
+```
+
+---
+
+### Core Architectural Subsystems
+
+#### 1. Dual-State Confidentiality Model
+Aquas strictly segregates public commitments from confidential clinical identity:
+* **Private State (Witness):** Doctor Full Name, State License Number, SSN, DEA privileges, and cryptographic salt nonces remain strictly inside browser memory (`aquasPrivateState`) and the 1AM wallet.
+* **Public State (On-Chain):** State Medical Board keys (`trustedBoards`), License Commitments (`issuedLicenses`), Revocation Nullifiers (`revokedLicenses`), Expiration Timestamps, and Verification Counters.
+
+#### 2. Cryptographic Commitment & Nullifier Pipeline
+```text
++-----------------------------------------------------------------------------------+
+|                        CREDENTIAL ISSUANCE PIPELINE                               |
+|                                                                                   |
+|  [Doctor PII + Metadata] ---> SHA-256 Digest (32B)                                |
+|                                       |                                           |
+|  [Issuing Board Secret]  ---> Board Public Key (32B)                              |
+|                                       |                                           |
+|  [Ephemeral Nonce (32B)] ---> Pedersen Hash (Payload, Nonce, BoardKey)            |
+|                                       |                                           |
+|                                       v                                           |
+|                    On-Chain Credential Commitment ID (32B)                        |
+|             (Inserted into Midnight issuedLicenses State Set)                     |
++-----------------------------------------------------------------------------------+
+```
+
+```text
++-----------------------------------------------------------------------------------+
+|                        ZERO-KNOWLEDGE PROVING PIPELINE                            |
+|                                                                                   |
+|  [Private Witness Vector]  ===> 1AM Proofstation / Prover Server                  |
+|  [Hospital Challenge (32B)]===> Synthesizes Halo2 ZK-SNARK Proof                  |
+|  [Doctor Secret (32B)]     ===> Derives Single-Use Nullifier (Anti-Replay)        |
+|                                       |                                           |
+|                                       v                                           |
+|                 Compact Circuit: proveValidLicense()                              |
+|                 - Asserts: issuedLicenses.member(credentialId)                    |
+|                 - Asserts: trustedBoards.member(boardKey)                         |
+|                 - Asserts: !revokedLicenses.member(credentialId)                  |
+|                 - Asserts: currentTime < expiresAt                                |
+|                 - Asserts: !usedProofs.member(nullifier)                          |
+|                                       |                                           |
+|                                       v                                           |
+|                  IMMUTABLE VERIFICATION RECEIPT (0 PII LEAKED)                    |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+### Tech Stack & Component Mapping
+
+| Architectural Layer | Technologies & Dependencies | Role in Aquas Protocol |
+| :--- | :--- | :--- |
+| **ZK Smart Contracts** | Compact Language 0.16.0 | Confidential business logic, board authorization sets, license commitment sets, and Halo2 verification rules |
+| **Proving Runtime** | 1AM Proofstation, `@midnight-ntwrk/compact-runtime` | Browser-based and node-based Zero-Knowledge SNARK synthesis |
+| **Web3 Client** | `@midnight-ntwrk/dapp-connector-api`, 1AM Wallet Extension | Wallet session management, private state storage, transaction balancing and on-chain submission |
+| **Application Layer** | Next.js 16 (App Router), React 19, TypeScript | Server Components, dynamic client-side state synchronizers, and verification command center |
+| **Design System** | Tailwind CSS v4, Framer Motion, Lucide Icons | Liquid Glass aesthetic, interactive telemetry charts, and high-performance radar visualizations |
+| **Healthcare Gateway**| HL7 FHIR R4 Practitioner Resource Schema | Standardized hospital EHR integration, automated credential check endpoints, and HMAC webhook dispatching |
+| **Testing & CI/CD** | Vitest 3, ESLint, TypeScript, GitHub Actions | 44 automated contract, proving, encryption, and adapter test cases |
+
+---
 
 ### Comprehensive Project Structure
 ```text
@@ -239,7 +351,7 @@ Aquas/
 |-- app/                                    # Next.js App Router
 |   |-- (dashboard)/                        # Protected Sidebar App Routes
 |   |   |-- dashboard/page.tsx              # Command Center & Live ZK Verification
-|   |   |-- batch/page.tsx                  # Multi-Doctor Batch Verification
+|   |   |-- batch/page.tsx                  # Multi-Doctor Batch Verification Hub
 |   |   |-- explorer/page.tsx               # Real-Time Telemetry & Expiration Radar
 |   |   |-- ehr/page.tsx                    # HL7 FHIR R4 EHR Gateway & Webhooks
 |   |   |-- pass/page.tsx                   # Mobile Physician Pass & Offline TOTP
@@ -253,6 +365,10 @@ Aquas/
 |   |-- layout.tsx                          # Root layout & theme configuration
 |   `-- page.tsx                            # Modern Animated Product Landing Page
 |-- components/                             # UI Components
+|   |-- CircuitCallWorkbench.tsx            # Live On-Chain Circuit Proving Workbench
+|   |-- NetworkMetricsCard.tsx              # Real-Time Telemetry Metric Cards
+|   |-- ExpirationRadar.tsx                 # Credential Expiration Breakdown Radar
+|   |-- ActivityFeed.tsx                    # Live On-Chain Transaction & State Feed
 |   `-- SidebarLayout.tsx                   # Unified Sidebar Navigation & Route Guard
 |-- contracts/                              # Midnight Zero-Knowledge Smart Contracts
 |   |-- doctor_license.compact              # Core Compact contract (Board & License circuits)
@@ -265,11 +381,18 @@ Aquas/
 |-- hooks/                                  # Custom React Hooks
 |   `-- use-midnight-wallet.ts              # 1AM wallet connection state, network & balance hook
 |-- lib/                                    # Utilities, Cryptography & Blockchain Clients
+|   |-- deployed-contract.ts                # Cross-tab reactive contract state (useSyncExternalStore)
 |   |-- deploy-doctor-license.ts            # Deployment helpers & private state initialization
 |   |-- doctor-license-client.ts            # Client-side transaction & circuit builder
 |   |-- midnight-browser.ts                 # 1AM wallet provider, ZK proof submission & balancing
-|   `-- midnight-read.ts                    # Indexer query engine for live on-chain state
+|   |-- midnight-config.ts                  # Server-safe network configuration (Preview/Preprod)
+|   |-- midnight-read.ts                    # Indexer query engine for live on-chain state
+|   |-- ehr-adapter.ts                      # HL7 FHIR R4 Practitioner mapper & validator
+|   |-- offline-pass.ts                     # Air-gapped HMAC-SHA256 TOTP pass generator
+|   |-- network-analytics.ts                # Telemetry KPIs & expiration bucket analyzer
+|   `-- webhooks.ts                         # Outbound revocation webhook signing & dispatcher
 |-- public/                                 # Static Assets & Prover Artifacts
+|   |-- Screenshot/                         # High-definition application screenshots
 |   `-- zk/doctor_license/                  # Compiled ZK proving keys (*.zkir) for browser proving
 |-- scripts/                                # Build & Automation Scripts
 |   |-- compile-contract.sh                 # Compact contract compilation script
@@ -281,6 +404,7 @@ Aquas/
 |   |-- network-analytics.test.ts           # Expiration radar & telemetry tests
 |   |-- offline-pass.test.ts                # TOTP & QR rotation tests
 |   |-- selective-disclosure.test.ts        # Zero-knowledge attribute proof tests
+|   |-- deploy-private-state.test.ts        # Sovereign deployer private state tests
 |   `-- webhooks.test.ts                    # Revocation callback signature tests
 |-- .github/workflows/                      # Continuous Integration
 |   `-- CI.yml                              # Automated Typecheck, Lint, Test, and Build workflow
@@ -290,6 +414,7 @@ Aquas/
 ```
 
 ---
+
 
 ## Run Locally
 
