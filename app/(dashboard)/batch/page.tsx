@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
-  Unplug,
-  WalletCards,
-  CircleAlert,
   Building2,
   RefreshCw,
+  CircleAlert
 } from "lucide-react";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
-import { shortId } from "@/lib/license-registry";
 import BatchRosterUploader from "@/components/BatchRosterUploader";
 import BatchResultsTable from "@/components/BatchResultsTable";
 import {
@@ -20,26 +16,12 @@ import {
   type BatchProgress,
 } from "@/lib/batch-verifier";
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ?? "";
-
-function BrandSeal() {
-  return (
-    <span className="brand-seal" aria-hidden="true">
-      <i />
-      <b />
-    </span>
-  );
-}
-
 export default function BatchVerificationPage() {
   const wallet = useMidnightWallet();
-  const liveMode = Boolean(CONTRACT_ADDRESS);
   const [isVerifying, setIsVerifying] = useState(false);
   const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [results, setResults] = useState<BatchVerificationResult[] | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
-
-  const connectedLabel = wallet.connected ? shortId(wallet.address ?? "connected") : "Connect 1AM";
 
   const handleRunBatch = async (entries: BatchDoctorEntry[]) => {
     setIsVerifying(true);
@@ -70,108 +52,58 @@ export default function BatchVerificationPage() {
   };
 
   return (
-    <main className="app-shell">
-      {/* Universal Topbar Header */}
-      <header className="topbar">
-        <Link href="/" className="brand">
-          <BrandSeal />
-          <span>Aquas</span>
-          <small>MEDICAL REGISTRY</small>
-        </Link>
-        <nav aria-label="Primary navigation">
-          <Link href="/">Home</Link>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/batch" className="active">Batch Verifier</Link>
-          <Link href="/explorer">Explorer</Link>
-          <Link href="/ehr">EHR Gateway</Link>
-          <Link href="/pass">Physician Pass</Link>
-          <Link href="/deploy">Deploy</Link>
-        </nav>
-        <div className="network-controls">
-          <span className="network-label">
-            <i />
-            {liveMode ? (wallet.connected ? "PREVIEW · LIVE" : "PREVIEW · OFFLINE") : "SANDBOX"}
-          </span>
-          <button
-            className="wallet-button"
-            onClick={wallet.connected ? wallet.disconnect : wallet.connect}
-            disabled={wallet.connecting}
-          >
-            {wallet.connected ? <Unplug size={14} /> : <WalletCards size={14} />}
-            {wallet.connecting ? "Connecting…" : connectedLabel}
-          </button>
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
+      {/* Page Header */}
+      <div className="border-b border-white/10 pb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#b08d57]/10 border border-[#b08d57]/20 text-xs font-mono text-[#b08d57] mb-2 font-semibold">
+          <Building2 size={14} />
+          <span>ENTERPRISE HOSPITAL CREDENTIALING</span>
         </div>
-      </header>
-
-      {wallet.error && (
-        <div className="global-message error">
-          <CircleAlert size={15} />
-          {wallet.error}
-        </div>
-      )}
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+          Multi-Doctor Batch Verification
+        </h1>
+        <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
+          Verify entire hospital physician rosters in parallel against Midnight zero-knowledge state. Generate audit-ready compliance certificates for Joint Commission (JCAHO) and CMS reviews.
+        </p>
+      </div>
 
       {errorNotice && (
-        <div className="global-message error">
-          <CircleAlert size={15} />
-          {errorNotice}
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-mono">
+          <CircleAlert size={16} />
+          <span>{errorNotice}</span>
         </div>
       )}
 
-      {/* Main Container */}
-      <section className="verify-workspace" style={{ maxWidth: "1280px", margin: "0 auto", padding: "48px 24px 80px" }}>
-        {/* Page Hero */}
-        <div style={{ marginBottom: "36px", borderBottom: "1px solid var(--line)", paddingBottom: "28px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-            <Building2 size={16} color="var(--seal-brass)" />
-            <span className="eyebrow" style={{ margin: 0 }}>Enterprise Hospital Credentialing</span>
+      {/* Progress Bar Display */}
+      {isVerifying && progress && (
+        <div className="p-6 bg-black/50 border border-white/10 rounded-3xl space-y-3 font-mono">
+          <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center gap-2 text-white">
+              <RefreshCw size={14} className="animate-spin text-[#b08d57]" />
+              <span>Verifying {progress.completed} of {progress.total} Credentials…</span>
+            </div>
+            <span className="text-[#3fa96b] font-bold">{progress.percent}%</span>
           </div>
-          <h1 style={{ margin: 0, fontFamily: "var(--font-serif)", fontSize: "clamp(32px, 4vw, 48px)", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
-            Multi-Doctor Batch Verification
-          </h1>
-          <p style={{ margin: "10px 0 0", color: "var(--muted)", maxWidth: "640px", fontSize: "15px", lineHeight: 1.6 }}>
-            Verify whole hospital physician rosters in parallel against Midnight zero-knowledge state. Generate audit-ready compliance certificates for Joint Commission (JCAHO) and CMS reviews.
-          </p>
+          <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#3fa96b] transition-all duration-200"
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          {progress.currentEntry && (
+            <span className="text-[11px] text-zinc-500 block truncate">
+              Checking: {progress.currentEntry}
+            </span>
+          )}
         </div>
+      )}
 
-        {/* Progress Bar Display */}
-        {isVerifying && progress && (
-          <div style={{ marginBottom: "28px", padding: "20px", border: "1px solid var(--line)", background: "var(--paper-raised)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <RefreshCw size={16} className="animate-spin" color="var(--seal-brass)" />
-                <strong style={{ fontSize: "13px", fontFamily: "var(--font-mono)" }}>
-                  Verifying {progress.completed} of {progress.total} Credentials…
-                </strong>
-              </div>
-              <span style={{ fontSize: "13px", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                {progress.percent}%
-              </span>
-            </div>
-            <div style={{ width: "100%", height: "8px", background: "var(--line)", overflow: "hidden" }}>
-              <div
-                style={{
-                  width: `${progress.percent}%`,
-                  height: "100%",
-                  background: "var(--seal-brass)",
-                  transition: "width 150ms ease",
-                }}
-              />
-            </div>
-            {progress.currentEntry && (
-              <small style={{ display: "block", marginTop: "8px", color: "var(--muted)", fontSize: "11px" }}>
-                Checking: {progress.currentEntry}
-              </small>
-            )}
-          </div>
-        )}
-
-        {/* Dynamic Workflow: Uploader or Results */}
-        {!results ? (
-          <BatchRosterUploader onRosterParsed={handleRunBatch} isVerifying={isVerifying} />
-        ) : (
-          <BatchResultsTable results={results} onReset={handleReset} />
-        )}
-      </section>
-    </main>
+      {/* Dynamic Workflow: Uploader or Results */}
+      {!results ? (
+        <BatchRosterUploader onRosterParsed={handleRunBatch} isVerifying={isVerifying} />
+      ) : (
+        <BatchResultsTable results={results} onReset={handleReset} />
+      )}
+    </div>
   );
 }

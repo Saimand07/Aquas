@@ -2,21 +2,22 @@
 
 import { useState } from "react";
 import {
-  Code2,
   Send,
   Copy,
   Check,
-  ShieldCheck,
-  Plus,
+  Layers,
+  Terminal,
+  Globe,
+  RefreshCw
 } from "lucide-react";
 
-const SAMPLE_CREDENTIAL = "e0c9d5d6d0ce7d5dc8dd4251a8d5ba0b368c42bb653f85b444e1318d93221f70";
+const SAMPLE_CREDENTIAL = "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
 
 export default function EhrIntegrationPanel() {
   const [activeTab, setActiveTab] = useState<"api" | "fhir" | "webhooks">("api");
   const [format, setFormat] = useState<"json" | "fhir">("json");
   const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL);
-  const [apiKey, setApiKey] = useState("aq_live_hospital_secret_key_demo");
+  const [apiKey] = useState("aq_live_hospital_secret_key_demo");
   const [responseOutput, setResponseOutput] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -92,301 +93,227 @@ export default function EhrIntegrationPanel() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="space-y-6 font-sans">
       {/* Tab Navigation */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--line)", gap: "16px" }}>
-        <button
-          onClick={() => setActiveTab("api")}
-          style={{
-            padding: "10px 16px",
-            background: "transparent",
-            border: "none",
-            borderBottom: activeTab === "api" ? "2px solid var(--ink)" : "2px solid transparent",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            fontWeight: 700,
-            cursor: "pointer",
-            color: activeTab === "api" ? "var(--ink)" : "var(--muted)",
-          }}
-        >
-          REST API Explorer
-        </button>
-        <button
-          onClick={() => setActiveTab("fhir")}
-          style={{
-            padding: "10px 16px",
-            background: "transparent",
-            border: "none",
-            borderBottom: activeTab === "fhir" ? "2px solid var(--ink)" : "2px solid transparent",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            fontWeight: 700,
-            cursor: "pointer",
-            color: activeTab === "fhir" ? "var(--ink)" : "var(--muted)",
-          }}
-        >
-          HL7® FHIR® R4 Practitioner Adapter
-        </button>
-        <button
-          onClick={() => setActiveTab("webhooks")}
-          style={{
-            padding: "10px 16px",
-            background: "transparent",
-            border: "none",
-            borderBottom: activeTab === "webhooks" ? "2px solid var(--ink)" : "2px solid transparent",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            fontWeight: 700,
-            cursor: "pointer",
-            color: activeTab === "webhooks" ? "var(--ink)" : "var(--muted)",
-          }}
-        >
-          Outbound Webhooks Gateway
-        </button>
+      <div className="flex border-b border-white/10 gap-2">
+        {[
+          { id: "api", label: "1. REST API Endpoint", icon: Terminal },
+          { id: "fhir", label: "2. HL7® FHIR® R4 Schema", icon: Layers },
+          { id: "webhooks", label: "3. Revocation Webhooks", icon: Globe },
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as "api" | "fhir" | "webhooks")}
+              style={{
+                background: isActive ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                color: isActive ? "#ffffff" : "#a1a1aa",
+                borderBottom: isActive ? "2px solid #b08d57" : "2px solid transparent",
+                fontWeight: isActive ? 700 : 500
+              }}
+              className="px-5 py-3 flex items-center gap-2 text-sm rounded-t-xl hover:text-white transition-all cursor-pointer"
+            >
+              <Icon className={`w-4 h-4 ${isActive ? "text-[#b08d57]" : "text-zinc-500"}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab 1: REST API Explorer */}
+      {/* TAB 1: REST API */}
       {activeTab === "api" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "24px" }}>
-          <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <span className="eyebrow" style={{ margin: 0 }}>Endpoint Definition</span>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "2px 6px", background: "rgba(63, 169, 107, 0.15)", color: "var(--verified-mint)", fontWeight: 700 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-5">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="font-bold text-base text-white">Interactive Endpoint Tester</h3>
+              <span className="text-[10px] font-mono text-[#3fa96b] bg-[#3fa96b]/10 border border-[#3fa96b]/20 px-2 py-0.5 rounded font-bold">
                 POST /api/ehr/verify
               </span>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px" }}>
-              <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
-                Bearer API Key
-                <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", marginTop: "4px", background: "var(--parchment)", border: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: "12px" }}
-                />
-              </label>
-
-              <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
-                Credential ID or Proof URI
+            <div className="space-y-4 font-mono text-xs">
+              <div className="space-y-1">
+                <label className="text-zinc-400 block">Credential ID / Hash</label>
                 <input
                   type="text"
                   value={credentialId}
                   onChange={(e) => setCredentialId(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", marginTop: "4px", background: "var(--parchment)", border: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: "12px" }}
+                  className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
                 />
-              </label>
-
-              <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
-                  Response Format:
-                </span>
-                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={format === "json"}
-                    onChange={() => setFormat("json")}
-                  />
-                  Standard JSON
-                </label>
-                <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={format === "fhir"}
-                    onChange={() => setFormat("fhir")}
-                  />
-                  HL7 FHIR R4 JSON
-                </label>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-zinc-400 block">Response Payload Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormat("json")}
+                    style={{
+                      background: format === "json" ? "#b08d57" : "rgba(255, 255, 255, 0.03)",
+                      color: format === "json" ? "#000000" : "#a1a1aa",
+                      fontWeight: format === "json" ? 700 : 500
+                    }}
+                    className="py-2.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
+                  >
+                    Standard JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormat("fhir")}
+                    style={{
+                      background: format === "fhir" ? "#b08d57" : "rgba(255, 255, 255, 0.03)",
+                      color: format === "fhir" ? "#000000" : "#a1a1aa",
+                      fontWeight: format === "fhir" ? 700 : 500
+                    }}
+                    className="py-2.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
+                  >
+                    HL7 FHIR R4 Bundle
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestApi}
+                disabled={isLoading}
+                style={{
+                  background: "#ffffff",
+                  color: "#000000",
+                  fontWeight: 700
+                }}
+                className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? <RefreshCw className="w-4 h-4 animate-spin text-black" /> : <Send className="w-4 h-4 text-black" />}
+                <span>Execute Verification Request</span>
+              </button>
             </div>
 
-            {/* cURL Display */}
-            <div style={{ position: "relative", background: "var(--parchment)", border: "1px solid var(--line)", padding: "14px", marginBottom: "16px" }}>
-              <button
-                onClick={copyCurl}
-                style={{ position: "absolute", top: "10px", right: "10px", background: "transparent", border: "none", cursor: "pointer", color: copied ? "var(--verified-mint)" : "var(--muted)" }}
-                title="Copy cURL"
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-              <pre style={{ margin: 0, fontSize: "11px", fontFamily: "var(--font-mono)", overflowX: "auto", whiteSpace: "pre-wrap" }}>
+            <div className="pt-2">
+              <div className="flex justify-between items-center mb-1 text-[11px] font-mono text-zinc-400">
+                <span>cURL Snippet:</span>
+                <button onClick={copyCurl} className="text-[#b08d57] hover:underline flex items-center gap-1 cursor-pointer">
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
+              <pre className="p-3 bg-black/60 border border-white/10 rounded-xl text-[10px] font-mono text-zinc-300 overflow-x-auto">
                 {curlCommand}
               </pre>
             </div>
-
-            <button
-              onClick={handleTestApi}
-              disabled={isLoading}
-              className="notary-cta"
-              style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", minHeight: "42px" }}
-            >
-              <Send size={14} />
-              {isLoading ? "Executing Zero-Knowledge Query…" : "Send Test Verification Request"}
-            </button>
           </div>
 
-          {/* Response Inspector */}
-          <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <span className="eyebrow" style={{ margin: 0 }}>Live Gateway Response</span>
-              <small style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--muted)" }}>
-                Settlement: Midnight Preview
-              </small>
+          <div className="lg:col-span-6 p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="font-bold text-base text-white">Live Response Payload</h3>
+              <span className="text-[11px] font-mono text-zinc-500">HTTP 200 OK</span>
             </div>
 
-            <div style={{ flex: 1, background: "var(--parchment)", border: "1px solid var(--line)", padding: "14px", overflowY: "auto", maxHeight: "400px" }}>
-              {responseOutput ? (
-                <pre style={{ margin: 0, fontSize: "11px", fontFamily: "var(--font-mono)", whiteSpace: "pre-wrap" }}>
-                  {responseOutput}
-                </pre>
-              ) : (
-                <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "12px" }}>
-                  <Code2 size={24} style={{ marginBottom: "8px", opacity: 0.5 }} />
-                  Click &quot;Send Test Verification Request&quot; to inspect live response payload.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 2: HL7 FHIR R4 Specs */}
-      {activeTab === "fhir" && (
-        <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "28px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-            <ShieldCheck size={20} color="var(--seal-brass)" />
-            <h3 style={{ margin: 0, fontFamily: "var(--font-serif)", fontSize: "22px" }}>
-              HL7® FHIR® Release 4 Conformance
-            </h3>
-          </div>
-          <p style={{ margin: "0 0 20px", fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
-            Aquas implements the standard HL7 FHIR Release 4 <code>VerificationResult</code> profile. Hospital EHR systems like <strong>Epic Systems (Chantilly / Hyperspace)</strong> and <strong>Oracle Health / Cerner Millennium</strong> can ingest Aquas responses directly without custom translation middleware.
-          </p>
-
-          <div style={{ background: "var(--parchment)", border: "1px solid var(--line)", padding: "16px" }}>
-            <span className="eyebrow" style={{ fontSize: "9px" }}>Example FHIR VerificationResult Output</span>
-            <pre style={{ margin: "8px 0 0", fontSize: "11px", fontFamily: "var(--font-mono)", overflowX: "auto" }}>
-{`{
-  "resourceType": "VerificationResult",
-  "id": "aq-vr-e0c9d5d6d0ce",
-  "status": "validated",
-  "statusDate": "2026-08-30T00:00:00.000Z",
-  "validationType": {
-    "coding": [{
-      "system": "http://terminology.hl7.org/CodeSystem/verificationresult-validation-type",
-      "code": "primary",
-      "display": "Primary Source Verification (Zero-Knowledge Compact Proof)"
-    }]
-  },
-  "extension": [
-    {
-      "url": "https://aquas.health/fhir/StructureDefinition/zk-credential-id",
-      "valueString": "e0c9d5d6d0ce7d5dc8dd4251a8d5ba0b368c42bb653f85b444e1318d93221f70"
-    },
-    {
-      "url": "https://aquas.health/fhir/StructureDefinition/zero-knowledge-proven",
-      "valueBoolean": true
-    }
-  ]
-}`}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Outbound Webhooks */}
-      {activeTab === "webhooks" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "24px" }}>
-          <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-            <span className="eyebrow" style={{ margin: 0 }}>Webhook Subscriptions</span>
-            <h3 style={{ margin: "4px 0 16px", fontFamily: "var(--font-serif)", fontSize: "20px" }}>
-              Register Regulatory Event Webhook
-            </h3>
-            <p style={{ margin: "0 0 20px", fontSize: "12px", color: "var(--muted)" }}>
-              Receive instant cryptographically signed push notifications whenever any monitored physician credential is renewed or revoked on the Midnight ledger.
-            </p>
-
-            <form onSubmit={handleRegisterWebhook} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
-                Healthcare Institution Name
-                <input
-                  type="text"
-                  value={webhookHospital}
-                  onChange={(e) => setWebhookHospital(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", marginTop: "4px", background: "var(--parchment)", border: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: "12px" }}
-                />
-              </label>
-
-              <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase" }}>
-                Target Webhook HTTPS URL
-                <input
-                  type="url"
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", marginTop: "4px", background: "var(--parchment)", border: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: "12px" }}
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="notary-cta"
-                style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", minHeight: "40px", marginTop: "8px" }}
-              >
-                <Plus size={14} />
-                Register Webhook Endpoint
-              </button>
-            </form>
-
-            {registeredWebhook && (
-              <div style={{ marginTop: "20px", padding: "14px", background: "var(--parchment)", border: "1px solid var(--verified-mint)" }}>
-                <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--verified-mint)", fontWeight: 700 }}>
-                  ✓ WEBHOOK REGISTERED
-                </span>
-                <div style={{ fontSize: "11px", marginTop: "6px" }}>
-                  <strong>Subscription ID:</strong> <code>{registeredWebhook.id}</code>
-                </div>
-                <div style={{ fontSize: "11px", marginTop: "4px" }}>
-                  <strong>HMAC Secret:</strong> <code>{registeredWebhook.secret}</code>
-                </div>
-                <small style={{ color: "var(--muted)", fontSize: "10px", display: "block", marginTop: "6px" }}>
-                  Save your HMAC secret securely. It is used to verify the <code>X-Aquas-Signature</code> header.
-                </small>
+            {responseOutput ? (
+              <pre className="p-4 bg-black/70 border border-white/10 rounded-2xl text-xs font-mono text-[#3fa96b] max-h-[460px] overflow-auto">
+                {responseOutput}
+              </pre>
+            ) : (
+              <div className="py-24 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl">
+                Click &quot;Execute Verification Request&quot; to inspect the live JSON response payload.
               </div>
             )}
           </div>
+        </div>
+      )}
 
-          <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-            <span className="eyebrow" style={{ margin: 0 }}>Security Protocol</span>
-            <h3 style={{ margin: "4px 0 16px", fontFamily: "var(--font-serif)", fontSize: "20px" }}>
-              HMAC Signature Verification
-            </h3>
-            <p style={{ margin: "0 0 16px", fontSize: "12px", color: "var(--muted)", lineHeight: 1.5 }}>
-              All webhook payloads are delivered with an <code>X-Aquas-Signature</code> header containing timestamp and cryptographic HMAC-SHA256 signature to prevent tampering and replay attacks.
+      {/* TAB 2: FHIR R4 SCHEMA */}
+      {activeTab === "fhir" && (
+        <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+          <div className="border-b border-white/10 pb-4">
+            <h3 className="font-bold text-xl text-white">HL7® FHIR® R4 Practitioner Schema</h3>
+            <p className="text-xs text-zinc-400 font-mono mt-0.5">
+              Standardized conformance mapping for Epic Systems, Cerner Millennium, and Meditech Expanse
             </p>
-
-            <div style={{ background: "var(--parchment)", border: "1px solid var(--line)", padding: "14px" }}>
-              <pre style={{ margin: 0, fontSize: "11px", fontFamily: "var(--font-mono)", overflowX: "auto" }}>
-{`// Node.js Verification Example:
-import crypto from "crypto";
-
-function verifyAquasWebhook(rawBody, signatureHeader, secret) {
-  const [tPart, v1Part] = signatureHeader.split(",");
-  const timestamp = tPart.split("=")[1];
-  const signature = v1Part.split("=")[1];
-
-  const payload = timestamp + "." + rawBody;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-
-  return signature === expected;
-}`}
-              </pre>
-            </div>
           </div>
+
+          <pre className="p-6 bg-black/70 border border-white/10 rounded-2xl text-xs font-mono text-zinc-300 overflow-x-auto leading-relaxed">
+{`{
+  "resourceType": "VerificationResult",
+  "id": "aquas-vr-e0c9d5d6",
+  "target": ["Practitioner/md-nys-84920"],
+  "targetLocation": ["http://epic-ehr.internal/fhir/r4/Practitioner/84920"],
+  "need": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/need",
+      "code": "initial",
+      "display": "Initial Credentialing"
+    }]
+  },
+  "status": "attested",
+  "statusDate": "2026-08-30T09:14:00Z",
+  "validationType": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/validation-type",
+      "code": "primary-source",
+      "display": "Primary Source Verification"
+    }]
+  },
+  "validator": [{
+    "organization": { "display": "New York State Medical Board" },
+    "identityCertificate": "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74"
+  }],
+  "attestation": {
+    "sourceSignature": "zk-compact-snark-receipt-valid"
+  }
+}`}
+          </pre>
+        </div>
+      )}
+
+      {/* TAB 3: WEBHOOKS */}
+      {activeTab === "webhooks" && (
+        <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+          <div className="border-b border-white/10 pb-4">
+            <h3 className="font-bold text-xl text-white">Outbound Revocation Webhooks</h3>
+            <p className="text-xs text-zinc-400 font-mono mt-0.5">
+              Receive real-time signed webhook callbacks whenever a medical board revokes or updates a license on-chain
+            </p>
+          </div>
+
+          <form onSubmit={handleRegisterWebhook} className="space-y-4 max-w-xl font-mono text-xs">
+            <div className="space-y-1">
+              <label className="text-zinc-400">Hospital Webhook Receiver URL</label>
+              <input
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-zinc-400">Health System Entity Name</label>
+              <input
+                value={webhookHospital}
+                onChange={(e) => setWebhookHospital(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#b08d57]"
+              />
+            </div>
+            <button
+              type="submit"
+              style={{
+                background: "#ffffff",
+                color: "#000000",
+                fontWeight: 700
+              }}
+              className="py-3 px-6 rounded-xl hover:bg-[#b08d57] transition-colors cursor-pointer"
+            >
+              Register Webhook Subscriber
+            </button>
+          </form>
+
+          {registeredWebhook && (
+            <div className="p-4 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl font-mono text-xs space-y-2">
+              <strong className="text-[#3fa96b] block">Webhook Subscription Registered:</strong>
+              <div>ID: <span className="text-white">{registeredWebhook.id}</span></div>
+              <div>HMAC Secret: <span className="text-[#b08d57]">{registeredWebhook.secret}</span></div>
+            </div>
+          )}
         </div>
       )}
     </div>

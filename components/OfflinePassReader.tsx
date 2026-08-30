@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import {
-  ShieldCheck,
   XCircle,
   Scan,
   WifiOff,
+  CheckCircle2
 } from "lucide-react";
 import {
   deserializeOfflinePassFromQr,
@@ -50,120 +50,95 @@ export default function OfflinePassReader() {
   };
 
   return (
-    <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <WifiOff size={16} color="var(--seal-brass)" />
-          <span className="eyebrow" style={{ margin: 0 }}>Offline Field Verifier</span>
+    <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6 shadow-xl font-sans">
+      <div className="flex justify-between items-center border-b border-white/10 pb-4">
+        <div className="flex items-center gap-2">
+          <WifiOff size={18} className="text-[#3fa96b]" />
+          <div>
+            <h3 className="font-bold text-base text-white">Offline Field Scanner</h3>
+            <p className="text-xs text-zinc-400 font-mono">Verify without internet or external connections</p>
+          </div>
         </div>
-        <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "2px 6px", background: "rgba(176, 141, 87, 0.15)", color: "var(--seal-brass)", fontWeight: 700 }}>
+        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#b08d57]/15 text-[#b08d57] border border-[#b08d57]/30 font-bold">
           ZERO-NETWORK REQUIRED
         </span>
       </div>
 
-      <h3 style={{ margin: "0 0 8px", fontFamily: "var(--font-serif)", fontSize: "20px" }}>
-        Scan Physician Offline Pass
-      </h3>
-      <p style={{ margin: "0 0 20px", fontSize: "12px", color: "var(--muted)" }}>
-        Hospital security and triage staff can verify physician credentials locally during internet outages, field operations, or within shielded radiological suites.
-      </p>
-
-      <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
-        <textarea
-          rows={3}
-          value={inputQrString}
-          onChange={(e) => setInputQrString(e.target.value)}
-          placeholder="Paste or scan offline QR token string (aquas:pass:v1:...)"
-          style={{ width: "100%", padding: "10px", background: "var(--parchment)", border: "1px solid var(--line)", fontFamily: "var(--font-mono)", fontSize: "11px", resize: "vertical" }}
-        />
+      <form onSubmit={handleVerify} className="space-y-4">
+        <div className="space-y-1">
+          <label className="text-xs font-mono uppercase text-zinc-400 block">
+            Offline QR Token String
+          </label>
+          <textarea
+            rows={3}
+            value={inputQrString}
+            onChange={(e) => setInputQrString(e.target.value)}
+            placeholder="Paste or scan offline QR token string (aquas:pass:v1:...)"
+            className="w-full p-4 bg-white/[0.03] border border-white/15 rounded-xl font-mono text-xs text-white focus:outline-none focus:border-[#b08d57]"
+          />
+        </div>
 
         <button
           type="submit"
           disabled={isVerifying || !inputQrString.trim()}
-          className="notary-cta"
-          style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", minHeight: "40px" }}
+          style={{
+            background: "#ffffff",
+            color: "#000000",
+            fontWeight: 700
+          }}
+          className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 text-xs shadow-xl hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
         >
-          <Scan size={14} />
-          {isVerifying ? "Verifying Cryptographic Pass Locally…" : "Verify Offline Pass"}
+          <Scan size={14} className="text-black" />
+          <span>{isVerifying ? "Verifying Cryptographic HMAC Locally…" : "Verify Offline Pass"}</span>
         </button>
       </form>
 
       {/* Verification Result Display */}
       {result && (
-        <div
-          style={{
-            border: "1px solid " + (result.valid ? "var(--verified-mint)" : "var(--alert-rust)"),
-            background: "var(--parchment)",
-            padding: "20px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {result.valid ? (
-                <ShieldCheck size={22} color="var(--verified-mint)" />
-              ) : (
-                <XCircle size={22} color="var(--alert-rust)" />
-              )}
-              <h4 style={{ margin: 0, fontFamily: "var(--font-serif)", fontSize: "18px", color: result.valid ? "var(--verified-mint)" : "var(--alert-rust)" }}>
-                {result.valid ? "OFFLINE VERIFIED · ACTIVE LICENSURE" : "VERIFICATION FAILED"}
-              </h4>
+        <div className={`p-6 rounded-2xl border font-mono text-xs space-y-4 ${
+          result.valid
+            ? "bg-[#3fa96b]/10 border-[#3fa96b]/30"
+            : "bg-red-500/10 border-red-500/30"
+        }`}>
+          <div className="flex items-center gap-3">
+            {result.valid ? (
+              <CheckCircle2 size={24} className="text-[#3fa96b]" />
+            ) : (
+              <XCircle size={24} className="text-red-400" />
+            )}
+            <div>
+              <strong className={`text-sm font-bold uppercase tracking-wider block ${
+                result.valid ? "text-[#3fa96b]" : "text-red-400"
+              }`}>
+                {result.valid ? "OFFLINE PASS CRYPTOGRAPHICALLY VALID" : "INVALID / EXPIRED OFFLINE PASS"}
+              </strong>
+              <span className="text-[11px] text-zinc-300">Status: {result.status}</span>
             </div>
-
-            <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--muted)" }}>
-              Verified: {new Date(result.verifiedAt * 1000).toLocaleTimeString()}
-            </span>
           </div>
 
-          {result.errorMessage && (
-            <p style={{ margin: "0 0 14px", fontSize: "12px", color: "var(--alert-rust)", fontWeight: 600 }}>
-              {result.errorMessage}
-            </p>
-          )}
-
-          {result.pass && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", background: "var(--paper-raised)", padding: "12px", border: "1px solid var(--line)", fontSize: "11px" }}>
-                <div>
-                  <span style={{ color: "var(--muted)", fontSize: "9px", textTransform: "uppercase", display: "block" }}>Physician Name</span>
-                  <strong style={{ fontSize: "13px" }}>{result.pass.doctorName}</strong>
-                </div>
-                <div>
-                  <span style={{ color: "var(--muted)", fontSize: "9px", textTransform: "uppercase", display: "block" }}>Specialty</span>
-                  <strong style={{ color: "var(--seal-brass)" }}>{result.pass.specialty}</strong>
-                </div>
-                <div>
-                  <span style={{ color: "var(--muted)", fontSize: "9px", textTransform: "uppercase", display: "block" }}>License No.</span>
-                  <strong style={{ fontFamily: "var(--font-mono)" }}>{result.pass.licenseNumber}</strong>
-                </div>
-                <div>
-                  <span style={{ color: "var(--muted)", fontSize: "9px", textTransform: "uppercase", display: "block" }}>NPI Number</span>
-                  <strong style={{ fontFamily: "var(--font-mono)" }}>{result.pass.npiNumber}</strong>
-                </div>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <span style={{ color: "var(--muted)", fontSize: "9px", textTransform: "uppercase", display: "block" }}>Issuing State Board Authority</span>
-                  <strong>{result.pass.issuingBoard}</strong>
-                </div>
+          {result.valid && result.pass && (
+            <div className="bg-black/50 border border-white/10 rounded-xl p-4 space-y-2 text-zinc-300">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Physician Name:</span>
+                <span className="text-white font-bold">{result.pass.doctorName}</span>
               </div>
-
-              {/* Verified Offline Attribute Chips */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {result.pass.deaSchedule && (
-                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
-                    ✓ DEA: {result.pass.deaSchedule.replace(/_/g, " ")}
-                  </span>
-                )}
-                {result.pass.cmeVerified && (
-                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
-                    ✓ CME ≥50h Compliant
-                  </span>
-                )}
-                {result.pass.cleanRecord && (
-                  <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", padding: "3px 7px", background: "rgba(63, 169, 107, 0.12)", color: "var(--verified-mint)", border: "1px solid rgba(63, 169, 107, 0.3)", fontWeight: 600 }}>
-                    ✓ Zero Disciplinary Sanctions
-                  </span>
-                )}
+              <div className="flex justify-between">
+                <span className="text-zinc-500">License Number:</span>
+                <span className="text-white">{result.pass.licenseNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Issuing Board:</span>
+                <span className="text-zinc-200">{result.pass.issuingBoard}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Anti-Replay Verification:</span>
+                <span className="text-[#3fa96b] font-bold">Passed (HMAC Verified)</span>
               </div>
             </div>
+          )}
+
+          {result.errorMessage && (
+            <p className="text-xs text-red-400">{result.errorMessage}</p>
           )}
         </div>
       )}

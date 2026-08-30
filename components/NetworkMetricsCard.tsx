@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 interface NetworkMetricsCardProps {
   label: string;
@@ -14,72 +14,32 @@ export default function NetworkMetricsCard({
   value,
   subValue,
   icon,
-  colorVar = "var(--ink)",
   badge,
 }: NetworkMetricsCardProps) {
   return (
-    <div
-      style={{
-        padding: "20px",
-        border: "1px solid var(--line)",
-        background: "var(--paper-raised)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        minHeight: "120px",
-        position: "relative",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-        <span
-          style={{
-            fontSize: "9px",
-            fontFamily: "var(--font-mono)",
-            textTransform: "uppercase",
-            color: "var(--muted)",
-            letterSpacing: "0.12em",
-            fontWeight: 600,
-          }}
-        >
+    <div className="p-6 bg-black/50 border border-white/10 rounded-3xl flex flex-col justify-between min-h-[130px] font-sans">
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider">
           {label}
         </span>
-        {icon && <div style={{ color: "var(--line-graphite)" }}>{icon}</div>}
+        {icon && <div className="text-zinc-400">{icon}</div>}
       </div>
 
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-        <strong
-          style={{
-            fontSize: "30px",
-            fontFamily: "var(--font-serif)",
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            color: colorVar,
-            lineHeight: 1,
-          }}
-        >
+      <div className="flex items-baseline gap-2.5">
+        <strong className="text-3xl font-bold tracking-tight text-white font-mono">
           {value}
         </strong>
         {badge && (
-          <span
-            style={{
-              fontSize: "9px",
-              fontFamily: "var(--font-mono)",
-              padding: "2px 6px",
-              background: "rgba(63, 169, 107, 0.15)",
-              color: "var(--verified-mint)",
-              border: "1px solid rgba(63, 169, 107, 0.3)",
-              fontWeight: 700,
-            }}
-          >
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 font-bold">
             {badge}
           </span>
         )}
       </div>
 
       {subValue && (
-        <small style={{ marginTop: "8px", fontSize: "11px", color: "var(--muted)", display: "block" }}>
+        <span className="mt-2 text-xs text-zinc-500 font-mono block">
           {subValue}
-        </small>
+        </span>
       )}
     </div>
   );

@@ -23,26 +23,28 @@ export default function ExpirationRadar({ buckets }: ExpirationRadarProps) {
   };
 
   return (
-    <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+    <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-4">
         <div>
-          <span className="eyebrow">Predictive Risk Monitoring</span>
-          <h3 style={{ margin: 0, fontFamily: "var(--font-serif)", fontSize: "20px", letterSpacing: "-0.02em" }}>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#b08d57] font-bold block">
+            Predictive Risk Monitoring
+          </span>
+          <h3 className="text-xl font-bold text-white mt-0.5">
             Credential Expiration Radar
           </h3>
-          <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--muted)" }}>
-            Categorizes active physician credentials by renewal horizons to prevent healthcare compliance lapses.
+          <p className="text-xs text-zinc-400 font-mono mt-0.5">
+            Categorizes active physician credentials by renewal horizons to prevent compliance lapses.
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--muted)" }}>
-          <span>Total Monitored:</span>
-          <strong style={{ color: "var(--ink)" }}>{totalActive} Active</strong>
+        <div className="flex items-center gap-2 font-mono text-xs text-zinc-400">
+          <span>Monitored:</span>
+          <strong className="text-white font-bold">{totalActive} Active</strong>
         </div>
       </div>
 
       {/* Visual Multi-Segment Bar */}
-      <div style={{ display: "flex", width: "100%", height: "12px", background: "var(--line)", marginBottom: "20px", overflow: "hidden" }}>
+      <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden flex">
         {buckets.map((b) => {
           const widthPercent = totalActive > 0 ? (b.count / totalActive) * 100 : 25;
           return (
@@ -50,10 +52,9 @@ export default function ExpirationRadar({ buckets }: ExpirationRadarProps) {
               key={b.id}
               style={{
                 width: `${widthPercent}%`,
-                height: "100%",
                 background: b.colorVar,
-                transition: "width 300ms ease",
               }}
+              className="h-full transition-all duration-300"
               title={`${b.label}: ${b.count}`}
             />
           );
@@ -61,7 +62,7 @@ export default function ExpirationRadar({ buckets }: ExpirationRadarProps) {
       </div>
 
       {/* Bucket Selector Pills */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "20px" }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {buckets.map((b) => {
           const isSelected = selectedBucket === b.id;
           return (
@@ -69,103 +70,66 @@ export default function ExpirationRadar({ buckets }: ExpirationRadarProps) {
               key={b.id}
               onClick={() => setSelectedBucket(b.id)}
               style={{
-                padding: "12px 14px",
-                border: "1px solid " + (isSelected ? "var(--ink)" : "var(--line)"),
-                background: isSelected ? "var(--parchment)" : "transparent",
-                cursor: "pointer",
-                textAlign: "left",
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-                transition: "all 150ms ease",
+                background: isSelected ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
+                borderColor: isSelected ? "#b08d57" : "rgba(255, 255, 255, 0.1)"
               }}
+              className="p-4 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer"
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", textTransform: "uppercase", color: "var(--muted)" }}>
-                  {b.label.split(" ")[0]}
-                </span>
+              <div className="flex justify-between items-center text-[10px] font-mono uppercase text-zinc-400">
+                <span>{b.label.split(" ")[0]}</span>
                 <span
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: b.colorVar,
-                  }}
+                  style={{ background: b.colorVar }}
+                  className="w-2 h-2 rounded-full inline-block"
                 />
               </div>
-              <strong style={{ fontSize: "20px", fontFamily: "var(--font-serif)", color: b.colorVar }}>
+              <strong className="text-2xl font-bold font-mono text-white mt-1">
                 {b.count}
               </strong>
-              <small style={{ fontSize: "10px", color: "var(--muted)" }}>
+              <span className="text-[11px] text-zinc-500 font-mono truncate">
                 {b.label}
-              </small>
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Selected Bucket Details Table */}
-      <div style={{ border: "1px solid var(--line)", background: "var(--parchment)", padding: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", fontWeight: 600 }}>
-            {activeBucket?.label} ({activeBucket?.records.length} Licenses)
-          </span>
-          <small style={{ fontSize: "10px", color: "var(--muted)" }}>
-            Requires Board Renewal Action
-          </small>
-        </div>
-
-        {activeBucket?.records.length === 0 ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "var(--muted)", fontSize: "12px" }}>
-            No credentials currently falling into the {activeBucket.label} category.
+      {/* Selected Bucket Records List */}
+      {activeBucket && (
+        <div className="p-4 bg-white/[0.02] border border-white/10 rounded-2xl space-y-3 font-mono text-xs">
+          <div className="flex justify-between items-center text-zinc-400 pb-2 border-b border-white/10">
+            <span className="font-bold text-white">{activeBucket.label} ({activeBucket.records.length})</span>
+            <span className="text-[11px] text-zinc-500">Requires Board Action</span>
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "200px", overflowY: "auto" }}>
-            {activeBucket?.records.map((rec) => {
-              const expires = rec.expiresAt
-                ? new Date(rec.expiresAt * 1000).toISOString().slice(0, 10)
-                : "—";
 
-              return (
-                <div
-                  key={rec.credentialId}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "8px 12px",
-                    background: "var(--paper-raised)",
-                    border: "1px solid var(--line)",
-                    fontSize: "12px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600 }}>
-                      {shortId(rec.credentialId)}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(rec.credentialId)}
-                      style={{ background: "transparent", border: "none", cursor: "pointer", color: copiedId === rec.credentialId ? "var(--verified-mint)" : "var(--muted)" }}
-                      title="Copy Credential ID"
-                    >
-                      {copiedId === rec.credentialId ? <Check size={12} /> : <Copy size={12} />}
-                    </button>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: "11px" }}>
-                    <span style={{ color: "var(--muted)" }}>
-                      Board: {rec.issuer ? shortId(rec.issuer) : "Committed"}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: activeBucket.colorVar }}>
-                      Expires: {expires}
+          {activeBucket.records.length === 0 ? (
+            <div className="py-4 text-center text-zinc-500">
+              No physician credentials fall within this horizon.
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5 max-h-52 overflow-y-auto">
+              {activeBucket.records.map((r, i) => (
+                <div key={i} className="py-2.5 flex justify-between items-center">
+                  <div>
+                    <strong className="text-white block font-sans text-xs">
+                      Physician #{shortId(r.credentialId)}
+                    </strong>
+                    <span className="text-[10px] text-zinc-500">
+                      Expires: {r.expiresAt ? new Date(Number(r.expiresAt) * 1000).toLocaleDateString() : "Never"}
                     </span>
                   </div>
+                  <button
+                    onClick={() => handleCopy(r.credentialId)}
+                    className="flex items-center gap-1 text-zinc-400 hover:text-white cursor-pointer text-[11px]"
+                  >
+                    <span>{shortId(r.credentialId)}</span>
+                    {copiedId === r.credentialId ? <Check size={12} className="text-[#3fa96b]" /> : <Copy size={12} />}
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

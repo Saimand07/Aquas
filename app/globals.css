@@ -16,12 +16,11 @@
 }
 
 * { box-sizing: border-box; }
-html { min-height: 100%; background: var(--parchment); color: var(--ink); }
-body { min-height: 100vh; margin: 0; background: var(--parchment); color: var(--ink); font-family: var(--font-sans); }
+html { min-height: 100%; background: #0a0a0a; color: #ffffff; color-scheme: dark; }
+body { min-height: 100vh; margin: 0; background: #0a0a0a; color: #ffffff; font-family: var(--font-sans); color-scheme: dark; }
 button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-button { color: inherit; }
-a { color: inherit; text-decoration: none; }
+a { text-decoration: none; }
 ::selection { background: color-mix(in srgb, var(--seal-brass) 30%, transparent); }
 
 .app-shell { min-height: 100vh; overflow: hidden; }

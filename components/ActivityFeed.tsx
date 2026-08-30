@@ -8,27 +8,26 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ events }: ActivityFeedProps) {
   return (
-    <div style={{ border: "1px solid var(--line)", background: "var(--paper-raised)", padding: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Activity size={16} color="var(--seal-brass)" />
-          <span className="eyebrow" style={{ margin: 0 }}>Real-Time Telemetry</span>
+    <div className="p-6 md:p-8 bg-black/50 border border-white/10 rounded-3xl space-y-6">
+      <div className="flex justify-between items-center border-b border-white/10 pb-4">
+        <div className="flex items-center gap-2">
+          <Activity size={18} className="text-[#3fa96b]" />
+          <div>
+            <h3 className="font-bold text-lg text-white">On-Chain Activity Feed</h3>
+            <p className="text-xs text-zinc-400 font-mono">Real-time telemetry from Midnight Preview</p>
+          </div>
         </div>
-        <small style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--muted)" }}>
-          Streaming Ledger Events
-        </small>
+        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 font-bold">
+          LIVE STREAM
+        </span>
       </div>
 
-      <h3 style={{ margin: "0 0 16px", fontFamily: "var(--font-serif)", fontSize: "20px", letterSpacing: "-0.02em" }}>
-        On-Chain Activity Feed
-      </h3>
-
       {events.length === 0 ? (
-        <div style={{ padding: "32px", textAlign: "center", color: "var(--muted)", fontSize: "12px", border: "1px dashed var(--line)" }}>
+        <div className="py-12 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-2xl">
           No recent on-chain events indexed for this contract.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "420px", overflowY: "auto" }}>
+        <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
           {events.map((ev) => {
             const isIssuance = ev.type === "ISSUANCE";
             const isRevocation = ev.type === "REVOCATION";
@@ -37,49 +36,36 @@ export default function ActivityFeed({ events }: ActivityFeedProps) {
             return (
               <div
                 key={ev.id}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                  padding: "12px 14px",
-                  background: "var(--parchment)",
-                  border: "1px solid var(--line)",
-                  transition: "border-color 150ms ease",
-                }}
+                className="p-4 bg-white/[0.02] border border-white/10 rounded-2xl flex items-start gap-3 hover:bg-white/[0.04] transition-colors"
               >
-                <div style={{ marginTop: "2px" }}>
-                  {isIssuance && <PlusCircle size={16} color="var(--verified-mint)" />}
-                  {isRevocation && <XCircle size={16} color="var(--alert-rust)" />}
-                  {isVerification && <CheckCircle2 size={16} color="var(--seal-brass)" />}
-                  {!isIssuance && !isRevocation && !isVerification && <Shield size={16} color="var(--ink)" />}
+                <div className="mt-0.5">
+                  {isIssuance && <PlusCircle size={16} className="text-[#3fa96b]" />}
+                  {isRevocation && <XCircle size={16} className="text-red-400" />}
+                  {isVerification && <CheckCircle2 size={16} className="text-[#b08d57]" />}
+                  {!isIssuance && !isRevocation && !isVerification && <Shield size={16} className="text-white" />}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px" }}>
-                    <strong style={{ fontSize: "12px", color: "var(--ink)" }}>{ev.title}</strong>
-                    <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--muted)", whiteSpace: "nowrap" }}>
-                      {ev.timeAgo}
-                    </span>
+                <div className="flex-1 min-w-0 font-mono text-xs">
+                  <div className="flex justify-between items-baseline gap-2">
+                    <strong className="text-white font-sans text-xs font-semibold">{ev.title}</strong>
+                    <span className="text-[10px] text-zinc-500 whitespace-nowrap">{ev.timeAgo}</span>
                   </div>
 
-                  <p style={{ margin: "3px 0 6px", fontSize: "11px", color: "var(--muted)", lineHeight: 1.4 }}>
-                    {ev.description}
-                  </p>
+                  <p className="text-zinc-400 text-[11px] mt-1 line-clamp-2">{ev.description}</p>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "10px", fontFamily: "var(--font-mono)" }}>
+                  <div className="flex items-center gap-3 mt-2 text-[10px]">
                     {ev.credentialId && (
-                      <span style={{ color: "var(--line-graphite)" }}>
-                        ID: {shortId(ev.credentialId)}
-                      </span>
+                      <span className="text-zinc-500">ID: {shortId(ev.credentialId)}</span>
                     )}
                     {ev.blockExplorerUrl && (
                       <a
                         href={ev.blockExplorerUrl}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--seal-brass)", textDecoration: "underline" }}
+                        className="inline-flex items-center gap-1 text-[#b08d57] hover:underline"
                       >
-                        Midnight Explorer <ExternalLink size={10} />
+                        <span>Explorer</span>
+                        <ExternalLink size={10} />
                       </a>
                     )}
                   </div>
