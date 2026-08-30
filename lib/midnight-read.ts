@@ -2,6 +2,8 @@ import "server-only";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { ledger } from "@/contracts/managed/doctor_license/contract/index.js";
+import type { MidnightNetwork } from "@/lib/midnight-config";
+
 
 export type OnChainLicense = {
   exists: boolean;
@@ -39,8 +41,13 @@ export async function readLicenseOnChain(
   indexerUri: string,
   indexerWsUri: string,
   credentialId: string,
+  network: MidnightNetwork = "preview",
 ): Promise<OnChainLicense> {
-  setNetworkId("preview");
+  try {
+    setNetworkId(network as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
   const id = fromHex(credentialId);
   const provider = indexerPublicDataProvider(indexerUri, indexerWsUri);
   const state = await provider.queryContractState(contractAddress.replace(/^0x/, ""));
@@ -67,8 +74,13 @@ export async function readRegistryOnChain(
   contractAddress: string,
   indexerUri: string,
   indexerWsUri: string,
+  network: MidnightNetwork = "preview",
 ): Promise<OnChainRegistry> {
-  setNetworkId("preview");
+  try {
+    setNetworkId(network as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
   const provider = indexerPublicDataProvider(indexerUri, indexerWsUri);
   const state = await provider.queryContractState(contractAddress.replace(/^0x/, ""));
   if (!state) throw new Error("Contract not found on connected network.");

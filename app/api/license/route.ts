@@ -1,5 +1,5 @@
 import { readLicenseOnChain, readRegistryOnChain } from "@/lib/midnight-read";
-import { getNetworkConfig, type MidnightNetwork } from "@/lib/midnight-browser";
+import { getNetworkConfig, type MidnightNetwork } from "@/lib/midnight-config";
 
 type RequestBody = {
   mode?: unknown;
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     const indexerWsUri = normalizeMidnightUrl(searchParams.get("indexerWsUri"), netConfig.indexerWsUri, ["wss:", "ws:"]);
 
     if (mode === "registry") {
-      const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri);
+      const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri, network);
       return Response.json(data);
     }
 
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    const onChain = await readLicenseOnChain(contractAddress, indexerUri, indexerWsUri, cleanId);
+    const onChain = await readLicenseOnChain(contractAddress, indexerUri, indexerWsUri, cleanId, network);
 
     if (onChain.exists) {
       return Response.json({
@@ -78,20 +78,17 @@ export async function GET(request: Request) {
       });
     }
 
+    // Contract exists but credential not found on-chain — return graceful not-found
     return Response.json({
-      found: true,
+      found: false,
       credentialId: cleanId,
-      revoked: false,
-      expired: false,
-      doctorName: "Dr. Sarah Lin, MD",
-      licenseNumber: "MD-NYS-84920",
-      issuer: "New York State Medical Board",
-      specialty: "Internal Medicine",
+      error: "Credential ID not found in on-chain registry",
       contractAddress,
       network,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "License lookup failed.";
+    // Return 200 with error field so client doesn't get a raw 500
     return Response.json({ error: message, found: false }, { status: 200 });
   }
 }
@@ -110,7 +107,7 @@ export async function POST(request: Request) {
     const indexerWsUri = normalizeMidnightUrl(body.indexerWsUri, netConfig.indexerWsUri, ["wss:", "ws:"]);
 
     if (body.mode === "registry") {
-      const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri);
+      const data = await readRegistryOnChain(contractAddress, indexerUri, indexerWsUri, network);
       return Response.json(data);
     }
 
@@ -133,6 +130,7 @@ export async function POST(request: Request) {
       indexerUri,
       indexerWsUri,
       cleanId,
+      network,
     );
     return Response.json(result);
   } catch (error) {

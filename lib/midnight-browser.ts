@@ -9,63 +9,15 @@ import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-p
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import type { MidnightProvider, ProofProvider, WalletProvider } from "@midnight-ntwrk/midnight-js-types";
 
-export type MidnightNetwork = "preview" | "preprod";
+import type { MidnightNetwork, NetworkConfig } from "./midnight-config";
+import { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl } from "./midnight-config";
 
-export interface NetworkConfig {
-  id: MidnightNetwork;
-  name: string;
-  badge: string;
-  rpcUri: string;
-  indexerUri: string;
-  indexerWsUri: string;
-  explorerBaseUrl: string;
-  canonicalContract: string;
-}
-
-export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
-  preview: {
-    id: "preview",
-    name: "Midnight Preview Testnet",
-    badge: "PREVIEW",
-    rpcUri: "wss://rpc.preview.midnight.network",
-    indexerUri: "https://api-preview.1am.xyz/api/v4/graphql",
-    indexerWsUri: "wss://api-preview.1am.xyz/api/v4/graphql/ws",
-    explorerBaseUrl: "https://preview.midnightexplorer.com",
-    canonicalContract:
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
-  },
-  preprod: {
-    id: "preprod",
-    name: "Midnight Preprod Network",
-    badge: "PREPROD",
-    rpcUri: "wss://rpc.preprod.midnight.network",
-    indexerUri: "https://api-preprod.1am.xyz/api/v4/graphql",
-    indexerWsUri: "wss://api-preprod.1am.xyz/api/v4/graphql/ws",
-    explorerBaseUrl: "https://preprod.midnightexplorer.com",
-    canonicalContract:
-      process.env.NEXT_PUBLIC_PREPROD_CONTRACT_ADDRESS ||
-      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
-  },
-};
-
-export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkConfig {
-  return NETWORKS[network] || NETWORKS.preview;
-}
-
-export function getExplorerContractUrl(contractAddress: string, network: MidnightNetwork = "preview"): string {
-  const config = getNetworkConfig(network);
-  const cleanAddr = contractAddress.trim().replace(/^0x/i, "");
-  return `${config.explorerBaseUrl}/contract/${cleanAddr}`;
-}
-
-export function getExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
-  const config = getNetworkConfig(network);
-  const cleanTx = txId.trim().replace(/^0x/i, "");
-  return `${config.explorerBaseUrl}/tx/${cleanTx}`;
-}
+// Re-export from server-safe config so client code can import from either file
+export type { MidnightNetwork, NetworkConfig };
+export { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl };
 
 export const MIDNIGHT_NETWORK = "preview" as const;
+
 
 export function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
