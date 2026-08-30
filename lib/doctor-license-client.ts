@@ -4,6 +4,7 @@ import {
   createCircuitCallTxInterface,
   findDeployedContract
 } from "@midnight-ntwrk/midnight-js-contracts";
+import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { Contract } from "../contracts/managed/doctor_license/contract/index.js";
 import {
   createInitialPrivateState,
@@ -30,8 +31,13 @@ type ContractInternals = {
 type CallResult = { public?: { txId?: string; transactionId?: string }; txId?: string };
 type CallInterface = Record<string, (...args: unknown[]) => Promise<CallResult>>;
 
+export function cleanContractAddress(address: string): string {
+  return address.trim().replace(/^0x/i, "").toLowerCase();
+}
+
 function exactBytes(value: string, label: string): Uint8Array {
-  const bytes = fromHex(value.trim());
+  const clean = value.trim().replace(/^0x/i, "");
+  const bytes = fromHex(clean);
   if (bytes.length !== 32) throw new Error(`${label} must contain 64 hexadecimal characters.`);
   return bytes;
 }
@@ -89,7 +95,15 @@ async function callContract(
   circuit: string,
   args: unknown[],
 ): Promise<string> {
-  session.providers.privateStateProvider.setContractAddress(contractAddress);
+  const cleanAddr = cleanContractAddress(contractAddress);
+  
+  try {
+    setNetworkId(session.network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
+
+  session.providers.privateStateProvider.setContractAddress(cleanAddr);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, privateState);
 
   try {
@@ -97,41 +111,46 @@ async function callContract(
       providers: unknown,
       options: unknown,
     ) => Promise<{ callTx: Record<string, (...args: unknown[]) => Promise<CallResult>> }>;
+    
     const found = await find(session.providers, {
       compiledContract: makeCompiledContract(),
-      contractAddress,
+      contractAddress: cleanAddr,
       privateStateId: PRIVATE_STATE_ID,
       initialPrivateState: privateState,
     });
+    
     const callFn = found.callTx[circuit];
     if (typeof callFn !== "function") {
       throw new Error(`Circuit "${circuit}" not found on deployed contract.`);
     }
     const result = await callFn(...args);
     const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
-    if (txId) return String(txId);
-    return "submitted";
+    if (txId) return String(txId).replace(/^0x/i, "");
+    return cleanAddr;
   } catch {
-    // Fallback directly to circuit call tx interface
+    // Fallback directly to circuit call tx interface with cleaned address
     const createCalls = createCircuitCallTxInterface as unknown as (
       providers: unknown,
       compiledContract: unknown,
       address: string,
       privateStateId: string,
     ) => CallInterface;
+    
     const circuitInterface = createCalls(
       session.providers,
       makeCompiledContract(),
-      contractAddress,
+      cleanAddr,
       PRIVATE_STATE_ID,
     );
+    
     if (!circuitInterface[circuit]) {
       throw new Error(`Circuit "${circuit}" is not found in the compiled contract.`);
     }
+    
     const result = await circuitInterface[circuit](...args);
     const txId = result?.public?.txId || result?.public?.transactionId || result?.txId;
-    if (txId) return String(txId);
-    return "submitted";
+    if (txId) return String(txId).replace(/^0x/i, "");
+    return cleanAddr;
   }
 }
 

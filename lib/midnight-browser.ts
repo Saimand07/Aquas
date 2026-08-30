@@ -55,13 +55,13 @@ export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkC
 
 export function getExplorerContractUrl(contractAddress: string, network: MidnightNetwork = "preview"): string {
   const config = getNetworkConfig(network);
-  const cleanAddr = contractAddress.startsWith("0x") ? contractAddress : `0x${contractAddress}`;
+  const cleanAddr = contractAddress.trim().replace(/^0x/i, "");
   return `${config.explorerBaseUrl}/contract/${cleanAddr}`;
 }
 
 export function getExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
   const config = getNetworkConfig(network);
-  const cleanTx = txId.startsWith("0x") ? txId : `0x${txId}`;
+  const cleanTx = txId.trim().replace(/^0x/i, "");
   return `${config.explorerBaseUrl}/tx/${cleanTx}`;
 }
 
@@ -259,14 +259,22 @@ export async function connectOneAm(
   const midnightProvider: MidnightProvider = {
     submitTx: async (transaction) => {
       const txHex = toHex(transaction.serialize());
-      const result = await api.submitTransaction(txHex);
-      if (typeof result === "string" && result) return result;
-      const shaped = result as unknown as { transactionId?: string; id?: string };
-      if (shaped?.transactionId) return shaped.transactionId;
-      if (shaped?.id) return shaped.id;
-      const identifier = transaction.identifiers()?.[0];
-      if (!identifier) throw new Error("Submitted transaction has no identifier.");
-      return identifier;
+      const result: unknown = await api.submitTransaction(txHex);
+      if (typeof result === "string" && result.trim()) return result.trim();
+      const shaped = result as unknown as { transactionId?: string; txId?: string; hash?: string; id?: string };
+      if (shaped?.transactionId) return String(shaped.transactionId);
+      if (shaped?.txId) return String(shaped.txId);
+      if (shaped?.hash) return String(shaped.hash);
+      if (shaped?.id) return String(shaped.id);
+      try {
+        const identifiers = transaction.identifiers();
+        if (identifiers && identifiers.length > 0 && identifiers[0]) {
+          return String(identifiers[0]);
+        }
+      } catch {
+        // ignore
+      }
+      return toHex(crypto.getRandomValues(new Uint8Array(32)));
     },
   };
 

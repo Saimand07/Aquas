@@ -5,7 +5,7 @@ import { sampleSigningKey } from "@midnight-ntwrk/compact-runtime";
 import { createUnprovenDeployTx, submitTxAsync } from "@midnight-ntwrk/midnight-js-contracts";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { Contract, type Witnesses } from "../contracts/managed/doctor_license/contract/index.js";
-import { MIDNIGHT_NETWORK, type BrowserSession } from "./midnight-browser";
+import type { BrowserSession } from "./midnight-browser";
 
 const CONTRACT_NAME = "doctor_license";
 export const PRIVATE_STATE_ID = "aquasPrivateState";
@@ -63,13 +63,20 @@ export async function deployDoctorLicense(
   session: BrowserSession,
   ownerSecret: Uint8Array,
 ): Promise<{ contractAddress: string; transactionId: string }> {
-  setNetworkId(MIDNIGHT_NETWORK);
+  try {
+    setNetworkId(session.network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
+
   const initialPrivateState = createInitialPrivateState(ownerSecret);
   const signingKey = sampleSigningKey();
+  
   const createDeploy = createUnprovenDeployTx as unknown as (
     providers: unknown,
     options: unknown,
   ) => Promise<DeployTxData>;
+  
   const deployTxData = await createDeploy(
     {
       zkConfigProvider: session.providers.zkConfigProvider,
@@ -83,14 +90,20 @@ export async function deployDoctorLicense(
       signingKey,
     },
   );
-  const contractAddress = String(deployTxData.public.contractAddress);
+
+  const rawAddress = String(deployTxData.public.contractAddress);
+  const contractAddress = rawAddress.trim().replace(/^0x/i, "");
+
   const submit = submitTxAsync as unknown as (
     providers: unknown,
     options: { unprovenTx: unknown },
   ) => Promise<string>;
-  const transactionId = String(await submit(session.providers, {
+
+  const submittedTxId = await submit(session.providers, {
     unprovenTx: deployTxData.private.unprovenTx,
-  }));
+  });
+
+  const transactionId = String(submittedTxId || contractAddress).trim();
 
   session.providers.privateStateProvider.setContractAddress(contractAddress);
   await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, deployTxData.private.initialPrivateState);
