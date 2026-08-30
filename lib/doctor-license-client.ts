@@ -169,12 +169,17 @@ async function callContract(
     await session.providers.privateStateProvider.set(PRIVATE_STATE_ID, nextPrivateState);
   }
 
-  const txId = typeof txResult === "string" && txResult.trim()
+  let txId = typeof txResult === "string" && txResult.trim()
     ? txResult.trim().replace(/^0x/i, "")
     : (txResult as { transactionId?: string })?.transactionId?.replace(/^0x/i, "") || cleanAddr;
 
+  if (txId.length === 66 && txId.startsWith("00")) {
+    txId = txId.slice(2);
+  }
+
   return txId;
 }
+
 
 
 export async function registerBoardOnChain(

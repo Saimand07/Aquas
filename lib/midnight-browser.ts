@@ -10,11 +10,12 @@ import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import type { MidnightProvider, ProofProvider, WalletProvider } from "@midnight-ntwrk/midnight-js-types";
 
 import type { MidnightNetwork, NetworkConfig } from "./midnight-config";
-import { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl } from "./midnight-config";
+import { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl, getMidnightExplorerTxUrl, normalizeTxHash } from "./midnight-config";
 
 // Re-export from server-safe config so client code can import from either file
 export type { MidnightNetwork, NetworkConfig };
-export { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl };
+export { NETWORKS, getNetworkConfig, getExplorerContractUrl, getExplorerTxUrl, getMidnightExplorerTxUrl, normalizeTxHash };
+
 
 export const MIDNIGHT_NETWORK = "preview" as const;
 

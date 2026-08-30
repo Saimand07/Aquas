@@ -53,13 +53,29 @@ export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkC
   return NETWORKS[network] ?? NETWORKS.preview;
 }
 
+export function normalizeTxHash(txId: string): string {
+  let clean = txId.trim().replace(/^0x/i, "");
+  // Midnight SDK sometimes returns a 66-hex string with a 00-prefix (33 bytes).
+  // The actual 32-byte transaction hash indexed by 1AM Explorer and Midnight Explorer is the 64-hex string.
+  if (clean.length === 66 && clean.startsWith("00")) {
+    clean = clean.slice(2);
+  }
+  return clean;
+}
+
 export function getExplorerContractUrl(contractAddress: string, network: MidnightNetwork = "preview"): string {
   const cleanAddr = contractAddress.trim().replace(/^0x/i, "");
   return `https://explorer.1am.xyz/contract/${cleanAddr}?network=${network}`;
 }
 
 export function getExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
-  const cleanTx = txId.trim().replace(/^0x/i, "");
+  const cleanTx = normalizeTxHash(txId);
   return `https://explorer.1am.xyz/tx/${cleanTx}?network=${network}`;
 }
+
+export function getMidnightExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
+  const cleanTx = normalizeTxHash(txId);
+  return `https://${network}.midnightexplorer.com/tx/0x${cleanTx}`;
+}
+
 

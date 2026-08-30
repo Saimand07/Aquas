@@ -31,8 +31,11 @@ import {
   connectOneAm,
   toHex,
   getNetworkConfig,
-  getExplorerTxUrl
+  getExplorerTxUrl,
+  getMidnightExplorerTxUrl,
+  normalizeTxHash
 } from "@/lib/midnight-browser";
+
 import { useActiveContract, getStoredDeployment } from "@/lib/deployed-contract";
 
 
@@ -298,20 +301,19 @@ export default function CircuitCallWorkbench() {
         msg = `License credential ID (${credentialId ? credentialId.slice(0, 12) + "…" : "empty"}) was not found on this contract. Note: Make sure to use the 64-hex Credential Commitment ID generated during Step 2 (createLicense), and NOT the transaction hash (which was shown on 1AM explorer).`;
       } else if (msg.includes("license revoked")) {
         msg = "This license has been revoked on-chain and can no longer be proven.";
-      } else if (msg.includes("private credential does not match ID")) {
-        msg = "Private witness vector does not match the specified Credential ID. Please click '⚡ Generate Fresh Secret' or execute Step 2 (createLicense) to generate a synchronized witness.";
       }
       setErrorMsg(msg);
       addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Notice: ${msg}`);
       toast.error(`Circuit Action Required`, { description: msg, duration: 9000 });
     } finally {
-
-
       setExecuting(false);
     }
   };
 
-  const explorerTxUrl = txHash ? getExplorerTxUrl(txHash, currentNetwork) : "";
+
+  const cleanTx = txHash ? normalizeTxHash(txHash) : "";
+  const explorerTxUrl = cleanTx ? getExplorerTxUrl(cleanTx, currentNetwork) : "";
+  const midnightExplorerTxUrl = cleanTx ? getMidnightExplorerTxUrl(cleanTx, currentNetwork) : "";
 
   return (
     <div className="p-6 md:p-8 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl space-y-6">
@@ -348,60 +350,67 @@ export default function CircuitCallWorkbench() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         {[
           {
-            id: "createBoard",
+            id: "createBoard" as const,
             step: "STEP 1",
-            label: "createBoard",
-            icon: Award,
+            title: "createBoard",
             desc: "Register Authority",
+            icon: Award,
           },
           {
-            id: "createLicense",
+            id: "createLicense" as const,
             step: "STEP 2",
-            label: "createLicense",
-            icon: FileCheck2,
+            title: "createLicense",
             desc: "Issue Credential",
+            icon: FileCheck2,
           },
           {
-            id: "proveValidLicense",
+            id: "proveValidLicense" as const,
             step: "STEP 3",
-            label: "proveValidLicense",
-            icon: Zap,
+            title: "proveValidLicense",
             desc: "Zero-Knowledge Prover",
+            icon: Zap,
           },
           {
-            id: "deleteLicense",
+            id: "deleteLicense" as const,
             step: "STEP 4",
-            label: "deleteLicense",
-            icon: Trash2,
+            title: "deleteLicense",
             desc: "Revoke Nullifier",
+            icon: Trash2,
           },
-        ].map((c) => {
-          const Icon = c.icon;
-          const isSelected = selectedCircuit === c.id;
+        ].map((circuit) => {
+          const isSelected = selectedCircuit === circuit.id;
+          const Icon = circuit.icon;
           return (
             <button
-              key={c.id}
+              key={circuit.id}
               onClick={() => {
-                setSelectedCircuit(c.id as CircuitType);
-                setTxHash(null);
+                setSelectedCircuit(circuit.id);
                 setErrorMsg(null);
+                setLogs((prev) => [
+                  ...prev,
+                  `[${new Date().toLocaleTimeString()}] Switched circuit target to: ${circuit.id}`,
+                ]);
               }}
               style={{
-                background: isSelected ? "rgba(176, 141, 87, 0.15)" : "rgba(255, 255, 255, 0.02)",
-                borderColor: isSelected ? "rgba(176, 141, 87, 0.5)" : "rgba(255, 255, 255, 0.08)",
+                background: isSelected ? "rgba(176, 141, 87, 0.12)" : "rgba(255, 255, 255, 0.02)",
+                borderColor: isSelected ? "#b08d57" : "rgba(255, 255, 255, 0.08)",
               }}
-              className="p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer hover:border-white/20"
+              className="p-3 rounded-2xl border text-left transition-all hover:border-[#b08d57]/60 cursor-pointer flex flex-col justify-between group shadow-sm"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-                  <Icon size={16} className={isSelected ? "text-[#b08d57]" : "text-zinc-400"} />
-                  <span className={`text-xs font-mono font-bold truncate ${isSelected ? "text-white" : "text-zinc-300"}`}>
-                    {c.label}
+                  <Icon size={16} className={isSelected ? "text-[#b08d57]" : "text-zinc-400 group-hover:text-zinc-200"} />
+                  <span className={`text-xs font-mono font-bold ${isSelected ? "text-white" : "text-zinc-400 group-hover:text-white"}`}>
+                    {circuit.title}
                   </span>
                 </div>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-zinc-400">{c.step}</span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-zinc-400 font-semibold border border-white/10">
+                  {circuit.step}
+                </span>
               </div>
-              <span className="text-[10px] text-zinc-500 font-mono truncate">{c.desc}</span>
+              <p className="text-[11px] text-zinc-500 font-sans mt-2">
+                {circuit.desc}
+              </p>
             </button>
           );
         })}
@@ -585,23 +594,43 @@ export default function CircuitCallWorkbench() {
             </div>
           </div>
 
-          {txHash && (
+          {cleanTx && (
             <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-[#3fa96b]/10 p-2.5 rounded-xl border border-[#3fa96b]/20">
-              <span className="text-[#3fa96b] text-[11px] font-bold truncate">Settlement TX: {txHash}</span>
-              <a
-                href={explorerTxUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  background: "#3fa96b",
-                  color: "#000000",
-                  fontWeight: 700,
-                }}
-                className="px-2.5 py-1 rounded text-[10px] flex items-center gap-1 hover:bg-white transition-colors cursor-pointer"
-              >
-                <span>Verify on Explorer ({netConfig.badge})</span>
-                <ExternalLink size={10} />
-              </a>
+              <span className="text-[#3fa96b] text-[11px] font-bold truncate">
+                Settlement TX: {cleanTx.slice(0, 16)}…{cleanTx.slice(-8)}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={explorerTxUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: "#3fa96b",
+                    color: "#000000",
+                    fontWeight: 700,
+                  }}
+                  className="px-2.5 py-1 rounded text-[10px] flex items-center gap-1 hover:bg-white transition-colors cursor-pointer"
+                  title="View transaction on 1AM Explorer"
+                >
+                  <span>1AM Explorer ↗</span>
+                  <ExternalLink size={10} />
+                </a>
+                <a
+                  href={midnightExplorerTxUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.1)",
+                    color: "#ffffff",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                  }}
+                  className="px-2.5 py-1 rounded text-[10px] flex items-center gap-1 hover:bg-white/20 transition-colors cursor-pointer"
+                  title="View transaction on Midnight Explorer"
+                >
+                  <span>Midnight ↗</span>
+                  <ExternalLink size={10} />
+                </a>
+              </div>
             </div>
           )}
 
