@@ -1,4 +1,4 @@
-# Level 3 Proposal: Confidential Credentials
+#  Proposal: Confidential Credentials
 
 ## Selected idea
 
