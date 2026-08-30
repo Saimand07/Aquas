@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { connectOneAmPreview, type BrowserSession } from "@/lib/midnight-browser";
+import { connectOneAm, type BrowserSession, type MidnightNetwork } from "@/lib/midnight-browser";
 
 type WalletState = {
   connected: boolean;
   connecting: boolean;
+  network: MidnightNetwork;
   address: string | null;
   session: BrowserSession | null;
   indexerUri: string | null;
@@ -16,6 +17,7 @@ type WalletState = {
 const initialState: WalletState = {
   connected: false,
   connecting: false,
+  network: "preview",
   address: null,
   session: null,
   indexerUri: null,
@@ -26,13 +28,14 @@ const initialState: WalletState = {
 export function useMidnightWallet() {
   const [state, setState] = useState(initialState);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (targetNetwork: MidnightNetwork = "preview") => {
     setState((current) => ({ ...current, connecting: true, error: null }));
     try {
-      const session = await connectOneAmPreview("/zk/doctor_license/");
+      const session = await connectOneAm(targetNetwork, "/zk/doctor_license/");
       setState({
         connected: true,
         connecting: false,
+        network: targetNetwork,
         address: session.unshieldedAddress,
         session,
         indexerUri: session.config.indexerUri,
@@ -42,7 +45,8 @@ export function useMidnightWallet() {
     } catch (error) {
       setState({
         ...initialState,
-        error: error instanceof Error ? error.message : "Wallet connection failed.",
+        network: targetNetwork,
+        error: error instanceof Error ? error.message : `Wallet connection on ${targetNetwork} failed.`,
       });
     }
   }, []);

@@ -10,33 +10,23 @@ import {
   LoaderCircle,
   Rocket,
   WalletCards,
-  Globe,
   RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
 import { deployDoctorLicense } from "@/lib/deploy-doctor-license";
 import {
-  connectOneAmPreview,
+  connectOneAm,
   detectOneAmWallet,
-  MIDNIGHT_NETWORK,
   pollForContract,
   toHex,
+  getNetworkConfig,
+  getExplorerContractUrl,
+  getExplorerTxUrl,
   type BrowserSession,
+  type MidnightNetwork,
 } from "@/lib/midnight-browser";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
-
-const DEPLOYMENT_STORAGE_KEY = "aquas:deployment:preview";
-
-const CANONICAL_CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim() ||
-  "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
-
-const CANONICAL_DEPLOYMENT: DeploymentRecord = {
-  contractAddress: CANONICAL_CONTRACT_ADDRESS,
-  transactionId: CANONICAL_CONTRACT_ADDRESS,
-  deployedAt: new Date().toISOString(),
-};
 
 type DeploymentRecord = {
   contractAddress: string;
@@ -44,63 +34,85 @@ type DeploymentRecord = {
   deployedAt: string;
 };
 
+function loadStoredDeployment(network: MidnightNetwork): DeploymentRecord {
+  const netConfig = getNetworkConfig(network);
+  const fallback: DeploymentRecord = {
+    contractAddress: netConfig.canonicalContract,
+    transactionId: netConfig.canonicalContract,
+    deployedAt: new Date().toISOString(),
+  };
+
+  if (typeof window === "undefined") return fallback;
+  try {
+    const saved = window.localStorage.getItem(`aquas:deployment:${network}`);
+    if (saved) {
+      const parsed = JSON.parse(saved) as DeploymentRecord;
+      if (parsed.contractAddress && !parsed.contractAddress.includes("2459ebb")) {
+        return parsed;
+      }
+      window.localStorage.removeItem(`aquas:deployment:${network}`);
+    }
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
 export default function DeployClient() {
   const wallet = useMidnightWallet();
-  const { user, authType, isAuthenticated, walletAddress } = useAuth();
+  const { user, authType, isAuthenticated, walletAddress, currentNetwork, switchNetwork } = useAuth();
+  
+  const deployNetwork = currentNetwork || "preview";
   const [walletInstalled, setWalletInstalled] = useState<boolean | null>(null);
   const [session, setSession] = useState<BrowserSession | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [deploying, setDeploying] = useState(false);
-  const [status, setStatus] = useState("Ready to deploy on Midnight Preview");
+  const [status, setStatus] = useState("Ready to deploy on Midnight");
   const [error, setError] = useState("");
-  const [deployment, setDeployment] = useState<DeploymentRecord>(() => {
-    if (typeof window === "undefined") return CANONICAL_DEPLOYMENT;
-    const saved = window.localStorage.getItem(DEPLOYMENT_STORAGE_KEY);
-    if (!saved) return CANONICAL_DEPLOYMENT;
-    try {
-      const parsed = JSON.parse(saved) as DeploymentRecord;
-      if (!parsed.contractAddress || parsed.contractAddress.includes("2459ebb")) {
-        window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
-        return CANONICAL_DEPLOYMENT;
-      }
-      return parsed;
-    } catch {
-      window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
-      return CANONICAL_DEPLOYMENT;
-    }
-  });
   const [ownerSecret, setOwnerSecret] = useState("");
   const mounted = useRef(true);
 
+  const netConfig = getNetworkConfig(deployNetwork);
+  const storageKey = `aquas:deployment:${deployNetwork}`;
+
+  const [deployment, setDeployment] = useState<DeploymentRecord>(() => loadStoredDeployment(deployNetwork));
+
+  const handleNetworkChange = (net: MidnightNetwork) => {
+    switchNetwork(net);
+    setSession(null);
+    setDeployment(loadStoredDeployment(net));
+    setStatus(`Switched to ${getNetworkConfig(net).name}. Ready to deploy.`);
+  };
+
   const isWalletConnected = Boolean(session || wallet.connected || (isAuthenticated && authType === "wallet"));
   const displayAddress = session?.unshieldedAddress || wallet.address || walletAddress || user?.identifier || "mn_preview_wallet";
-  const shortAddress = displayAddress ? `${displayAddress.slice(0, 14)}…` : "Preview Active";
+  const shortAddress = displayAddress ? `${displayAddress.slice(0, 14)}…` : `${netConfig.badge} Active`;
 
   const initSession = useCallback(async (): Promise<BrowserSession | null> => {
-    if (session) return session;
+    if (session && session.network === deployNetwork) return session;
     setConnecting(true);
     setError("");
-    setStatus("Establishing 1AM preview proving session…");
+    setStatus(`Establishing 1AM ${deployNetwork} proving session…`);
     try {
-      const connected = await connectOneAmPreview("/zk/doctor_license/");
+      const connected = await connectOneAm(deployNetwork, "/zk/doctor_license/");
       if (mounted.current) {
         setSession(connected);
-        setStatus("1AM proving session active.");
+        setStatus(`1AM proving session active on ${deployNetwork}.`);
       }
       return connected;
     } catch (reason) {
       if (mounted.current) {
         setError(reason instanceof Error ? reason.message : "Wallet session establishment failed.");
-        setStatus("1AM connection required");
+        setStatus(`1AM connection required on ${deployNetwork}`);
       }
       return null;
     } finally {
       if (mounted.current) setConnecting(false);
     }
-  }, [session]);
+  }, [session, deployNetwork]);
 
   useEffect(() => {
-    void detectOneAmWallet().then((w) => {
+    void detectOneAmWallet(deployNetwork).then((w) => {
       if (mounted.current) {
         const hasWallet = w !== null;
         setWalletInstalled(hasWallet);
@@ -109,21 +121,23 @@ export default function DeployClient() {
         }
       }
     });
-    return () => { mounted.current = false; };
-  }, [wallet.connected, authType, initSession]);
+    return () => {
+      mounted.current = false;
+    };
+  }, [deployNetwork, initSession, wallet.connected, authType]);
 
-  const deploy = useCallback(async () => {
-    setDeploying(true);
+  const handleDeploy = async () => {
+    if (deploying) return;
     setError("");
-    setOwnerSecret("");
-    setStatus("Prompting 1AM wallet: please approve deployment in 1AM popup…");
+    setDeploying(true);
+    setStatus(`Connecting to 1AM Prover on ${netConfig.name}…`);
 
     try {
       let activeSession = session;
-      if (!activeSession) {
+      if (!activeSession || activeSession.network !== deployNetwork) {
         activeSession = await initSession();
         if (!activeSession) {
-          throw new Error("1AM wallet must be connected to authorize deployment transaction.");
+          throw new Error(`1AM wallet must be connected on ${netConfig.name} to authorize deployment transaction.`);
         }
       }
 
@@ -156,52 +170,35 @@ export default function DeployClient() {
       setDeployment(record);
       setOwnerSecret(toHex(secret));
       setDeploying(false);
-      window.localStorage.setItem(DEPLOYMENT_STORAGE_KEY, JSON.stringify(record));
-      setStatus("Contract submitted and confirmed on Midnight ledger!");
+      window.localStorage.setItem(storageKey, JSON.stringify(record));
+      setStatus(`Contract submitted and confirmed on ${netConfig.name} ledger!`);
 
-      // IN-APP NOTIFICATION
-      toast.success("Midnight Contract Deployed Successfully!", {
-        description: `Contract Address: ${result.contractAddress.slice(0, 18)}…`,
-        duration: 12000,
+      // Rich in-app toast notification with verifiable link
+      toast.success(`Contract Deployed on ${netConfig.badge}!`, {
+        description: `Contract: ${record.contractAddress.slice(0, 16)}…`,
+        duration: 10000,
         action: {
-          label: "View Explorer ↗",
-          onClick: () =>
-            window.open(
-              `https://preview.midnightexplorer.com/contract/${result.contractAddress}`,
-              "_blank",
-            ),
+          label: "View on Explorer ↗",
+          onClick: () => window.open(getExplorerContractUrl(record.contractAddress, deployNetwork), "_blank"),
         },
       });
 
-      // Background indexer polling without freezing the UI
-      void pollForContract(
-        activeSession.config.indexerUri,
-        result.contractAddress,
-        (attempt) => {
-          if (mounted.current) setStatus(`Indexer syncing block — attempt ${attempt}`);
-        },
-      )
-        .then(() => {
-          if (mounted.current) {
-            setStatus("Contract deployed & fully indexed on Midnight Preview.");
-            toast.info("Contract indexed on Midnight Preview GraphQL.", { duration: 6000 });
-          }
-        })
-        .catch((reason) => {
-          console.warn("Background indexer notice:", reason);
-        });
-
+      // Background non-blocking indexer sync check
+      void pollForContract(activeSession.config.indexerUri, record.contractAddress).catch((err) => {
+        console.warn("Background indexer sync notice:", err);
+      });
     } catch (reason) {
       if (mounted.current) {
-        setError(reason instanceof Error ? reason.message : "Deployment failed.");
-        setStatus("Deployment halted");
+        const message = reason instanceof Error ? reason.message : "Deployment failed";
+        setError(message);
+        setStatus("Deployment failed");
         setDeploying(false);
         toast.error("Deployment Failed", {
-          description: reason instanceof Error ? reason.message : "Transaction was rejected or timed out.",
+          description: message,
         });
       }
     }
-  }, [session, initSession]);
+  };
 
   function copy(value: string, label = "Value") {
     void navigator.clipboard.writeText(value);
@@ -209,11 +206,15 @@ export default function DeployClient() {
   }
 
   const resetToCanonical = () => {
-    setDeployment(CANONICAL_DEPLOYMENT);
-    window.localStorage.removeItem(DEPLOYMENT_STORAGE_KEY);
-    setStatus("Reset to verified canonical preview contract.");
-    toast.info("Reset to verified canonical preview contract.");
+    const canonical = loadStoredDeployment(deployNetwork);
+    setDeployment(canonical);
+    window.localStorage.removeItem(storageKey);
+    setStatus(`Reset to canonical ${deployNetwork} contract.`);
+    toast.info(`Reset to canonical ${deployNetwork} contract.`);
   };
+
+  const explorerContractUrl = deployment ? getExplorerContractUrl(deployment.contractAddress, deployNetwork) : "";
+  const explorerTxUrl = deployment ? getExplorerTxUrl(deployment.transactionId, deployNetwork) : "";
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
@@ -225,26 +226,54 @@ export default function DeployClient() {
             <span>SOVEREIGN CONTRACT DEPLOYER</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-            Deploy Aquas to Midnight Preview
+            Deploy Aquas to Midnight ({netConfig.badge})
           </h1>
           <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
             Deployment happens directly in this browser. 1AM supplies wallet access, gas balancing, and cryptographic transaction submission.
           </p>
         </div>
 
-        <button
-          onClick={resetToCanonical}
-          style={{
-            background: "rgba(255, 255, 255, 0.04)",
-            color: "#a1a1aa",
-            border: "1px solid rgba(255, 255, 255, 0.1)"
-          }}
-          className="px-3.5 py-2 rounded-xl text-xs font-mono flex items-center gap-1.5 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
-          title="Reset to canonical Midnight Preview deployed contract"
-        >
-          <RotateCcw size={13} />
-          <span>Reset Canonical Contract</span>
-        </button>
+        {/* Network Toggle in Deploy Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-white/[0.03] backdrop-blur-2xl border border-white/10 p-1 rounded-2xl font-mono text-xs shadow-inner">
+            <button
+              onClick={() => handleNetworkChange("preview")}
+              style={{
+                background: deployNetwork === "preview" ? "#b08d57" : "transparent",
+                color: deployNetwork === "preview" ? "#000000" : "#a1a1aa",
+                fontWeight: deployNetwork === "preview" ? 700 : 500
+              }}
+              className="px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs"
+            >
+              <span>⚡ Preview</span>
+            </button>
+            <button
+              onClick={() => handleNetworkChange("preprod")}
+              style={{
+                background: deployNetwork === "preprod" ? "#3fa96b" : "transparent",
+                color: deployNetwork === "preprod" ? "#000000" : "#a1a1aa",
+                fontWeight: deployNetwork === "preprod" ? 700 : 500
+              }}
+              className="px-3.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs"
+            >
+              <span>🛡️ Preprod</span>
+            </button>
+          </div>
+
+          <button
+            onClick={resetToCanonical}
+            style={{
+              background: "rgba(255, 255, 255, 0.04)",
+              color: "#a1a1aa",
+              border: "1px solid rgba(255, 255, 255, 0.1)"
+            }}
+            className="px-3.5 py-2 rounded-xl text-xs font-mono flex items-center gap-1.5 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
+            title={`Reset to canonical ${deployNetwork} deployed contract`}
+          >
+            <RotateCcw size={13} />
+            <span>Reset Canonical</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -252,7 +281,7 @@ export default function DeployClient() {
         <div className="lg:col-span-5 p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all duration-300 space-y-6">
           <h2 className="text-xl font-bold text-white tracking-tight">Browser Deployment Protocol</h2>
           <p className="text-zinc-400 text-xs font-mono leading-relaxed">
-            Direct client-side deployment without intermediary servers. The smart contract and proving keys are compiled into local WASM bytecode.
+            Direct client-side deployment without intermediary servers. Proving keys are compiled into local WASM bytecode and broadcast to <strong>{netConfig.name}</strong>.
           </p>
 
           <ol className="space-y-4 font-mono text-xs">
@@ -267,7 +296,7 @@ export default function DeployClient() {
               <div>
                 <strong className="text-white block">Connect 1AM Wallet</strong>
                 <span className="text-zinc-400 text-[11px]">
-                  {isWalletConnected ? `Connected (${shortAddress})` : "Browser extension with Preview network"}
+                  {isWalletConnected ? `Connected (${shortAddress})` : `Browser extension with ${deployNetwork} network`}
                 </span>
               </div>
             </li>
@@ -282,7 +311,7 @@ export default function DeployClient() {
               </span>
               <div>
                 <strong className="text-white block">Approve Deployment</strong>
-                <span className="text-zinc-400 text-[11px]">ZK proof and state initialization</span>
+                <span className="text-zinc-400 text-[11px]">ZK proof and state initialization on {netConfig.badge}</span>
               </div>
             </li>
 
@@ -296,7 +325,7 @@ export default function DeployClient() {
               </span>
               <div>
                 <strong className="text-white block">Save Contract Address</strong>
-                <span className="text-zinc-400 text-[11px]">Public registry on Midnight Explorer</span>
+                <span className="text-zinc-400 text-[11px]">Public registry on {netConfig.name} Explorer</span>
               </div>
             </li>
           </ol>
@@ -309,23 +338,27 @@ export default function DeployClient() {
               <Rocket className="w-5 h-5 text-[#b08d57]" />
               <h3 className="font-bold text-base text-white">Deployment Console</h3>
             </div>
-            <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30 font-bold">
-              MIDNIGHT PREVIEW
+            <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full font-bold shadow-sm ${
+              deployNetwork === "preprod" ? "bg-[#3fa96b]/15 text-[#3fa96b] border border-[#3fa96b]/30" : "bg-[#b08d57]/15 text-[#b08d57] border border-[#b08d57]/30"
+            }`}>
+              {netConfig.badge}
             </span>
           </div>
 
-          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 font-mono text-xs space-y-2">
+          <div className="bg-black/40 border border-white/10 rounded-2xl p-4 font-mono text-xs space-y-2 shadow-inner">
             <div className="flex justify-between">
               <span className="text-zinc-400">Contract Name:</span>
               <span className="text-white font-bold">doctor_license.compact</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">Compact Runtime:</span>
-              <span className="text-zinc-200">0.16.0</span>
+              <span className="text-zinc-400">Target Network:</span>
+              <span className={deployNetwork === "preprod" ? "text-[#3fa96b] font-bold" : "text-[#b08d57] font-bold"}>
+                {netConfig.name}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">Target Network:</span>
-              <span className="text-[#3fa96b] font-bold">{MIDNIGHT_NETWORK}</span>
+              <span className="text-zinc-400">RPC Endpoint:</span>
+              <span className="text-zinc-400 text-[11px] truncate max-w-[240px]">{netConfig.rpcUri}</span>
             </div>
           </div>
 
@@ -334,7 +367,7 @@ export default function DeployClient() {
               <CircleAlert size={18} className="mt-0.5" />
               <div>
                 <strong className="block">1AM Wallet Extension</strong>
-                <p className="text-zinc-400 mt-1">For live deployment, install the 1AM browser extension, switch to preview network, and reload.</p>
+                <p className="text-zinc-400 mt-1">For live deployment, install the 1AM browser extension, switch to {deployNetwork} network, and reload.</p>
                 <a href="https://1am.xyz" target="_blank" rel="noreferrer" className="text-[#b08d57] underline inline-flex items-center gap-1 mt-2">
                   <span>Get 1AM Wallet</span>
                   <ExternalLink size={12} />
@@ -345,142 +378,128 @@ export default function DeployClient() {
 
           <div className="space-y-4 font-mono text-xs">
             {isWalletConnected && (
-              <div className="p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl flex justify-between items-center">
+              <div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl flex justify-between items-center shadow-inner">
                 <div className="flex items-center gap-2">
-                  <WalletCards size={16} className="text-[#3fa96b]" />
-                  <span className="text-zinc-400">Connected Wallet:</span>
+                  <WalletCards size={16} className={deployNetwork === "preprod" ? "text-[#3fa96b]" : "text-[#b08d57]"} />
+                  <span className="text-zinc-400">Connected Wallet ({netConfig.badge}):</span>
                 </div>
-                <span className="text-[#3fa96b] font-bold select-all">{displayAddress}</span>
+                <span className="text-white font-bold">{shortAddress}</span>
               </div>
             )}
 
-            {!deploying ? (
-              <button
-                onClick={deploy}
-                disabled={connecting}
-                style={{
-                  background: "#ffffff",
-                  color: "#000000",
-                  fontWeight: 700
-                }}
-                className="w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {connecting ? (
-                  <>
-                    <LoaderCircle className="animate-spin text-black" size={18} />
-                    <span>Connecting 1AM Session…</span>
-                  </>
-                ) : (
-                  <>
-                    <Rocket size={18} className="text-black" />
-                    <span>Deploy New Instance to Midnight Preview</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <div className="p-4 bg-[#b08d57]/10 border border-[#b08d57]/30 rounded-2xl flex items-center gap-3 text-[#b08d57]">
-                <LoaderCircle className="animate-spin" size={20} />
-                <div>
-                  <strong className="block">Building &amp; Proving on Midnight…</strong>
-                  <span className="text-xs text-zinc-300">{status}</span>
-                </div>
+            <div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${deploying ? "bg-[#b08d57] animate-pulse" : "bg-[#3fa96b]"}`} />
+                <span className="text-zinc-400">Status:</span>
+              </div>
+              <span className="text-white font-bold truncate max-w-[280px]">{status}</span>
+            </div>
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-2 text-red-400 text-xs">
+                <CircleAlert size={16} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
+
+            <button
+              onClick={handleDeploy}
+              disabled={deploying || connecting}
+              style={{
+                background: "#ffffff",
+                color: "#000000",
+                fontWeight: 700
+              }}
+              className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-sm shadow-2xl hover:bg-[#b08d57] transition-all cursor-pointer disabled:opacity-50"
+            >
+              {deploying ? (
+                <>
+                  <LoaderCircle className="animate-spin text-black" size={16} />
+                  <span>Synthesizing ZK Proof on {netConfig.badge}…</span>
+                </>
+              ) : (
+                <>
+                  <Rocket size={16} className="text-black fill-current" />
+                  <span>Deploy to Midnight ({netConfig.badge})</span>
+                </>
+              )}
+            </button>
           </div>
 
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-mono">
-              <CircleAlert size={16} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* VERIFIABLE DEPLOYMENT RESULT WITH DIRECT EXPLORER LINKS */}
-          {deployment && !deploying && (
-            <div className="p-6 bg-[#3fa96b]/10 border border-[#3fa96b]/30 rounded-2xl space-y-5 font-mono text-xs">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#3fa96b]/20 pb-3">
-                <div className="flex items-center gap-2 text-[#3fa96b]">
-                  <Check size={18} />
-                  <strong className="text-sm uppercase tracking-wide">DEPLOYED &amp; VERIFIED ON MIDNIGHT</strong>
+          {/* Deployment Result Card */}
+          {deployment && (
+            <div className="p-6 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl space-y-4 shadow-inner font-mono text-xs">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Check size={16} className="text-[#3fa96b]" />
+                  <strong className="text-white">Active {netConfig.badge} Deployment Record</strong>
                 </div>
-                <a
-                  href={`https://preview.midnightexplorer.com/contract/${deployment.contractAddress}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    background: "#3fa96b",
-                    color: "#000000",
-                    fontWeight: 700
-                  }}
-                  className="px-3 py-1.5 rounded-lg flex items-center gap-1 text-[11px] hover:bg-white transition-colors cursor-pointer shadow"
-                >
-                  <span>Verify on Explorer</span>
-                  <ExternalLink size={12} />
-                </a>
+                <span className="text-[10px] text-zinc-500">{deployment.deployedAt.slice(0, 19).replace("T", " ")}</span>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-zinc-400 font-medium">Contract Address:</label>
-                  <a
-                    href={`https://preview.midnightexplorer.com/contract/${deployment.contractAddress}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#3fa96b] hover:underline flex items-center gap-1 text-[11px]"
-                  >
-                    <span>View Contract ↗</span>
-                  </a>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Contract Address ({netConfig.badge}):</label>
+                  <div className="flex items-center gap-2 bg-black/60 border border-white/10 p-2.5 rounded-xl">
+                    <span className="text-zinc-200 text-[11px] truncate flex-1">{deployment.contractAddress}</span>
+                    <button
+                      onClick={() => copy(deployment.contractAddress, "Contract Address")}
+                      className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+                      title="Copy Address"
+                    >
+                      <Clipboard size={14} />
+                    </button>
+                    <a
+                      href={explorerContractUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1 text-[#3fa96b] hover:text-white cursor-pointer"
+                      title="Verify on Explorer"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
                 </div>
-                <div className="p-3 bg-black/70 border border-white/10 rounded-xl flex justify-between items-center">
-                  <code className="text-[#3fa96b] font-bold text-xs truncate select-all">{deployment.contractAddress}</code>
-                  <button onClick={() => copy(deployment.contractAddress, "Contract Address")} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy Address">
-                    <Clipboard size={15} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-zinc-400 font-medium">Deployment Transaction ID:</label>
-                  <a
-                    href={`https://preview.midnightexplorer.com/tx/${deployment.transactionId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-zinc-400 hover:text-white flex items-center gap-1 text-[11px]"
-                  >
-                    <span>View TX ↗</span>
-                  </a>
+                <div>
+                  <label className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Transaction Hash:</label>
+                  <div className="flex items-center gap-2 bg-black/60 border border-white/10 p-2.5 rounded-xl">
+                    <span className="text-zinc-200 text-[11px] truncate flex-1">{deployment.transactionId}</span>
+                    <button
+                      onClick={() => copy(deployment.transactionId, "Transaction ID")}
+                      className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+                      title="Copy Transaction ID"
+                    >
+                      <Clipboard size={14} />
+                    </button>
+                    <a
+                      href={explorerTxUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1 text-[#3fa96b] hover:text-white cursor-pointer"
+                      title="Verify on Explorer"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
                 </div>
-                <div className="p-3 bg-black/70 border border-white/10 rounded-xl flex justify-between items-center">
-                  <code className="text-zinc-300 text-xs truncate select-all">{deployment.transactionId}</code>
-                  <button onClick={() => copy(deployment.transactionId, "Transaction ID")} className="text-zinc-400 hover:text-white cursor-pointer ml-2" title="Copy TX ID">
-                    <Clipboard size={15} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="pt-2 flex items-center justify-between text-[11px] text-zinc-400">
-                <span>Deployed at: {new Date(deployment.deployedAt).toLocaleString()}</span>
-                <span className="flex items-center gap-1 text-[#3fa96b]">
-                  <Globe size={12} />
-                  <span>Public State Active</span>
-                </span>
-              </div>
-            </div>
-          )}
-
-          {ownerSecret && !deploying && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2 font-mono text-xs text-amber-400">
-              <div className="flex items-center gap-2">
-                <KeyRound size={16} />
-                <strong>Save Board Master Secret:</strong>
-              </div>
-              <p className="text-zinc-400 text-[11px]">Required for state board administration. Generated in browser and never sent to servers.</p>
-              <div className="p-2 bg-black/60 border border-white/10 rounded-lg flex justify-between items-center">
-                <code className="text-[#b08d57] truncate select-all">{ownerSecret}</code>
-                <button onClick={() => copy(ownerSecret, "Master Secret")} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
-                  <Clipboard size={14} />
-                </button>
+                {ownerSecret && (
+                  <div>
+                    <label className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Deployer Private Witness Secret:</label>
+                    <div className="flex items-center gap-2 bg-black/60 border border-amber-500/20 p-2.5 rounded-xl text-amber-300">
+                      <KeyRound size={14} className="shrink-0 text-[#b08d57]" />
+                      <span className="text-[11px] truncate flex-1">{ownerSecret}</span>
+                      <button
+                        onClick={() => copy(ownerSecret, "Owner Secret")}
+                        className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+                        title="Copy Secret"
+                      >
+                        <Clipboard size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

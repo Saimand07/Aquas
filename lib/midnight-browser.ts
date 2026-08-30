@@ -9,6 +9,62 @@ import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-p
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import type { MidnightProvider, ProofProvider, WalletProvider } from "@midnight-ntwrk/midnight-js-types";
 
+export type MidnightNetwork = "preview" | "preprod";
+
+export interface NetworkConfig {
+  id: MidnightNetwork;
+  name: string;
+  badge: string;
+  rpcUri: string;
+  indexerUri: string;
+  indexerWsUri: string;
+  explorerBaseUrl: string;
+  canonicalContract: string;
+}
+
+export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
+  preview: {
+    id: "preview",
+    name: "Midnight Preview Testnet",
+    badge: "PREVIEW",
+    rpcUri: "wss://rpc.preview.midnight.network",
+    indexerUri: "https://api-preview.1am.xyz/api/v4/graphql",
+    indexerWsUri: "wss://api-preview.1am.xyz/api/v4/graphql/ws",
+    explorerBaseUrl: "https://preview.midnightexplorer.com",
+    canonicalContract:
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
+  },
+  preprod: {
+    id: "preprod",
+    name: "Midnight Preprod Network",
+    badge: "PREPROD",
+    rpcUri: "wss://rpc.preprod.midnight.network",
+    indexerUri: "https://api-preprod.1am.xyz/api/v4/graphql",
+    indexerWsUri: "wss://api-preprod.1am.xyz/api/v4/graphql/ws",
+    explorerBaseUrl: "https://preprod.midnightexplorer.com",
+    canonicalContract:
+      process.env.NEXT_PUBLIC_PREPROD_CONTRACT_ADDRESS ||
+      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
+  },
+};
+
+export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkConfig {
+  return NETWORKS[network] || NETWORKS.preview;
+}
+
+export function getExplorerContractUrl(contractAddress: string, network: MidnightNetwork = "preview"): string {
+  const config = getNetworkConfig(network);
+  const cleanAddr = contractAddress.startsWith("0x") ? contractAddress : `0x${contractAddress}`;
+  return `${config.explorerBaseUrl}/contract/${cleanAddr}`;
+}
+
+export function getExplorerTxUrl(txId: string, network: MidnightNetwork = "preview"): string {
+  const config = getNetworkConfig(network);
+  const cleanTx = txId.startsWith("0x") ? txId : `0x${txId}`;
+  return `${config.explorerBaseUrl}/tx/${cleanTx}`;
+}
+
 export const MIDNIGHT_NETWORK = "preview" as const;
 
 export function toHex(bytes: Uint8Array): string {
@@ -104,6 +160,7 @@ function createPatchedPublicDataProvider(queryUrl: string, subscriptionUrl: stri
 
 export type BrowserSession = {
   api: ConnectedAPI;
+  network: MidnightNetwork;
   config: Awaited<ReturnType<ConnectedAPI["getConfiguration"]>>;
   unshieldedAddress: string;
   providers: {
@@ -116,8 +173,12 @@ export type BrowserSession = {
   };
 };
 
-export async function detectOneAmWallet(): Promise<InitialAPI | null> {
-  setNetworkId(MIDNIGHT_NETWORK);
+export async function detectOneAmWallet(network: MidnightNetwork = "preview"): Promise<InitialAPI | null> {
+  try {
+    setNetworkId(network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
   for (let attempt = 0; attempt < 150; attempt += 1) {
     const injected = window.midnight ?? {};
     const wallet =
@@ -137,12 +198,26 @@ export async function detectOneAmWallet(): Promise<InitialAPI | null> {
   return null;
 }
 
-export async function connectOneAmPreview(zkAssetBasePath: string): Promise<BrowserSession> {
-  setNetworkId(MIDNIGHT_NETWORK);
-  const wallet = await detectOneAmWallet();
+export async function connectOneAm(
+  network: MidnightNetwork = "preview",
+  zkAssetBasePath = "/zk/doctor_license/"
+): Promise<BrowserSession> {
+  try {
+    setNetworkId(network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
+
+  const wallet = await detectOneAmWallet(network);
   if (!wallet) throw new Error("1AM wallet not detected. Install or enable extension, then reload.");
-  const api = await wallet.connect(MIDNIGHT_NETWORK);
-  setNetworkId(MIDNIGHT_NETWORK);
+  
+  const api = await wallet.connect(network);
+  try {
+    setNetworkId(network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
+
   const status = await api.getConnectionStatus();
   if (status.status !== "connected") throw new Error("1AM did not confirm wallet connection.");
 
@@ -151,10 +226,17 @@ export async function connectOneAmPreview(zkAssetBasePath: string): Promise<Brow
     api.getUnshieldedAddress(),
     api.getShieldedAddresses(),
   ]);
-  if (String(config.networkId).toLowerCase() !== MIDNIGHT_NETWORK) {
-    throw new Error(`Wrong wallet network: expected preview, received ${config.networkId}.`);
+
+  const receivedNetwork = String(config.networkId).toLowerCase();
+  if (!receivedNetwork.includes(network)) {
+    throw new Error(`Wrong wallet network: expected ${network}, received ${config.networkId}. Please switch network in 1AM wallet settings.`);
   }
-  setNetworkId(MIDNIGHT_NETWORK);
+
+  try {
+    setNetworkId(network as unknown as Parameters<typeof setNetworkId>[0]);
+  } catch {
+    // ignore
+  }
 
   const zkConfigProvider = new FetchZkConfigProvider(
     new URL(zkAssetBasePath, window.location.origin).toString(),
@@ -190,6 +272,7 @@ export async function connectOneAmPreview(zkAssetBasePath: string): Promise<Brow
 
   return {
     api,
+    network,
     config,
     unshieldedAddress: unshielded.unshieldedAddress,
     providers: {
@@ -201,6 +284,14 @@ export async function connectOneAmPreview(zkAssetBasePath: string): Promise<Brow
       midnightProvider,
     },
   };
+}
+
+export async function connectOneAmPreview(zkAssetBasePath = "/zk/doctor_license/"): Promise<BrowserSession> {
+  return connectOneAm("preview", zkAssetBasePath);
+}
+
+export async function connectOneAmPreprod(zkAssetBasePath = "/zk/doctor_license/"): Promise<BrowserSession> {
+  return connectOneAm("preprod", zkAssetBasePath);
 }
 
 export async function pollForContract(

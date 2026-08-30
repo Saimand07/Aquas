@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
@@ -18,11 +17,14 @@ import {
   Zap
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { type MidnightNetwork, getNetworkConfig } from "@/lib/midnight-browser";
 
 export default function SignInPage() {
   const router = useRouter();
   const {
     isAuthenticated,
+    currentNetwork,
+    switchNetwork,
     connectWallet,
     signInCredentials,
     signInSandbox,
@@ -31,6 +33,7 @@ export default function SignInPage() {
   } = useAuth();
 
   const [authMode, setAuthMode] = useState<"wallet" | "credentials">("wallet");
+  const [selectedNetwork, setSelectedNetwork] = useState<MidnightNetwork>(currentNetwork || "preview");
   const [email, setEmail] = useState("admin@ny-medicalboard.gov");
   const [password, setPassword] = useState("aquas2026");
   const [showPassword, setShowPassword] = useState(false);
@@ -43,9 +46,15 @@ export default function SignInPage() {
     }
   }, [isAuthenticated, router]);
 
+  const handleNetworkSelect = (net: MidnightNetwork) => {
+    setSelectedNetwork(net);
+    switchNetwork(net);
+    setLocalError(null);
+  };
+
   const handleWalletConnect = async () => {
     setLocalError(null);
-    const success = await connectWallet();
+    const success = await connectWallet(selectedNetwork);
     if (success) {
       router.push("/dashboard");
     }
@@ -67,6 +76,7 @@ export default function SignInPage() {
   };
 
   const displayError = localError || authError;
+  const netConfig = getNetworkConfig(selectedNetwork);
 
   return (
     <div className="relative min-h-screen bg-[#03040a] text-white flex overflow-hidden justify-center items-center p-6 selection:bg-[#b08d57] selection:text-black font-sans">
@@ -94,15 +104,48 @@ export default function SignInPage() {
           </div>
 
           {/* Form Card */}
-          <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-8 rounded-2xl shadow-2xl space-y-6">
+          <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl space-y-6">
+            {/* Network Selector Pill in Sign-in */}
+            <div className="space-y-1.5 font-mono text-xs">
+              <span className="text-[10px] uppercase text-zinc-400 font-bold tracking-wider block">
+                Select Midnight Network
+              </span>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-white/[0.03] rounded-2xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => handleNetworkSelect("preview")}
+                  style={{
+                    background: selectedNetwork === "preview" ? "#b08d57" : "transparent",
+                    color: selectedNetwork === "preview" ? "#000000" : "#a1a1aa",
+                    fontWeight: selectedNetwork === "preview" ? 700 : 500
+                  }}
+                  className="py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer text-xs"
+                >
+                  <span>⚡ Preview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNetworkSelect("preprod")}
+                  style={{
+                    background: selectedNetwork === "preprod" ? "#3fa96b" : "transparent",
+                    color: selectedNetwork === "preprod" ? "#000000" : "#a1a1aa",
+                    fontWeight: selectedNetwork === "preprod" ? 700 : 500
+                  }}
+                  className="py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer text-xs"
+                >
+                  <span>🛡️ Preprod</span>
+                </button>
+              </div>
+            </div>
+
             {/* Auth Mode Tabs */}
             <div className="grid grid-cols-2 gap-1 p-1 bg-white/[0.03] rounded-xl border border-white/10 font-mono text-xs">
               <button
                 type="button"
                 onClick={() => { setAuthMode("wallet"); setLocalError(null); }}
                 style={{
-                  background: authMode === "wallet" ? "#b08d57" : "transparent",
-                  color: authMode === "wallet" ? "#000000" : "#a1a1aa",
+                  background: authMode === "wallet" ? "rgba(255, 255, 255, 0.1)" : "transparent",
+                  color: authMode === "wallet" ? "#ffffff" : "#a1a1aa",
                   fontWeight: authMode === "wallet" ? 700 : 500
                 }}
                 className="py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -114,8 +157,8 @@ export default function SignInPage() {
                 type="button"
                 onClick={() => { setAuthMode("credentials"); setLocalError(null); }}
                 style={{
-                  background: authMode === "credentials" ? "#b08d57" : "transparent",
-                  color: authMode === "credentials" ? "#000000" : "#a1a1aa",
+                  background: authMode === "credentials" ? "rgba(255, 255, 255, 0.1)" : "transparent",
+                  color: authMode === "credentials" ? "#ffffff" : "#a1a1aa",
                   fontWeight: authMode === "credentials" ? 700 : 500
                 }}
                 className="py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -150,17 +193,21 @@ export default function SignInPage() {
                   </p>
                 </div>
 
-                <div className="bg-white/[0.02] border border-white/10 rounded-xl p-3 font-mono text-xs space-y-2">
+                <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 font-mono text-xs space-y-2">
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-zinc-400">Target Ledger:</span>
                     <span className="text-[#3fa96b] font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#3fa96b] inline-block" />
-                      Midnight Preview
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#3fa96b] inline-block animate-pulse" />
+                      {netConfig.name}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-zinc-400">Prover Core:</span>
-                    <span className="text-zinc-200">Compact ZK WASM</span>
+                    <span className="text-zinc-200">1AM Proofstation + Zero Gas</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-zinc-400">Explorer:</span>
+                    <span className="text-zinc-400 truncate max-w-[200px]">{netConfig.explorerBaseUrl}</span>
                   </div>
                 </div>
 
@@ -173,17 +220,17 @@ export default function SignInPage() {
                     color: "#000000",
                     fontWeight: 700
                   }}
-                  className="w-full py-3.5 rounded-xl flex justify-center items-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-4 rounded-2xl flex justify-center items-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isConnecting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-black" />
-                      <span>Connecting 1AM Wallet...</span>
+                      <span>Connecting 1AM on {netConfig.badge}...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-black" />
-                      <span>Connect 1AM Wallet</span>
+                      <Sparkles className="w-4 h-4 text-black fill-current" />
+                      <span>Connect 1AM Wallet ({netConfig.badge})</span>
                     </>
                   )}
                 </button>
@@ -230,9 +277,9 @@ export default function SignInPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
@@ -245,7 +292,7 @@ export default function SignInPage() {
                     color: "#000000",
                     fontWeight: 700
                   }}
-                  className="w-full py-3 rounded-xl flex justify-center items-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full py-4 rounded-2xl flex justify-center items-center gap-2 text-sm shadow-xl hover:bg-[#b08d57] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isConnecting ? (
                     <>
@@ -254,44 +301,25 @@ export default function SignInPage() {
                     </>
                   ) : (
                     <>
-                      <span>Sign In with Credentials</span>
-                      <ArrowRight className="w-4 h-4 text-black" />
+                      <span>Authorize Session ({netConfig.badge})</span>
+                      <ArrowRight size={16} />
                     </>
                   )}
                 </button>
               </form>
             )}
 
-            {/* Quick Demo Sandbox Access */}
-            <div className="pt-2 border-t border-white/10 space-y-3">
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink mx-3 text-[10px] font-mono text-zinc-400 uppercase tracking-widest">
-                  One-Click Instant Access
-                </span>
-                <div className="flex-grow border-t border-white/10"></div>
-              </div>
-
+            {/* Sandbox Quick Access */}
+            <div className="pt-2 border-t border-white/10 text-center">
               <button
                 type="button"
                 onClick={handleSandboxAccess}
-                style={{
-                  background: "rgba(255, 255, 255, 0.05)",
-                  color: "#ffffff",
-                  border: "1px solid rgba(255, 255, 255, 0.15)"
-                }}
-                className="w-full py-2.5 rounded-xl text-xs font-mono font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1.5"
               >
-                <Zap className="w-3.5 h-3.5 text-[#3fa96b]" />
-                <span>Launch Interactive Demo Sandbox</span>
+                <Zap size={12} className="text-[#b08d57]" />
+                <span>Explore Sandbox ({netConfig.badge})</span>
               </button>
             </div>
-          </div>
-
-          <div className="mt-6 text-center space-y-2">
-            <Link href="/" className="text-xs font-mono text-zinc-400 hover:text-white transition-colors">
-              &larr; Return to Aquas Home
-            </Link>
           </div>
         </motion.div>
       </div>

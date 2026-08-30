@@ -13,13 +13,18 @@ import {
   Unplug,
   CircleAlert,
   UserCheck,
-  Globe
+  Globe,
+  Radio,
+  ExternalLink,
+  Copy,
+  Check
 } from "lucide-react";
 import { shortId } from "@/lib/license-registry";
-import { useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { FluidParticlesBackground } from "@/components/ui/fluid-particles-background";
+import { getNetworkConfig, getExplorerContractUrl } from "@/lib/midnight-browser";
 
 const NAV_ITEMS = [
   { label: "Command Center", icon: LayoutDashboard, href: "/dashboard" },
@@ -40,9 +45,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     user,
     walletAddress,
     authType,
+    currentNetwork,
+    switchNetwork,
     signOut,
     error: authError
   } = useAuth();
+
+  const [copiedContract, setCopiedContract] = useState(false);
 
   const isMounted = useSyncExternalStore(
     emptySubscribe,
@@ -61,10 +70,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     return null; // Don't flash dashboard if unauthenticated
   }
 
+  const netConfig = getNetworkConfig(currentNetwork);
+  const activeContract = netConfig.canonicalContract;
+  const explorerContractUrl = getExplorerContractUrl(activeContract, currentNetwork);
+
   const userInitial = user?.name ? user.name.charAt(0) : "A";
   const userDisplayName = user?.name || "Dr. Sarah Lin, MD";
-  const userSubtitle = user?.role || (authType === "wallet" ? "1AM Verified Node" : "Authorized Session");
+  const userSubtitle = user?.role || (authType === "wallet" ? `1AM Verified Node (${netConfig.badge})` : "Authorized Session");
   const connectedAddressLabel = walletAddress ? shortId(walletAddress) : "Sandbox Mode";
+
+  const handleCopyContract = () => {
+    navigator.clipboard.writeText(activeContract);
+    setCopiedContract(true);
+    setTimeout(() => setCopiedContract(false), 2000);
+  };
 
   return (
     <FluidParticlesBackground className="relative min-h-screen bg-[#070707] text-white flex overflow-hidden font-sans">
@@ -145,29 +164,55 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <div className="flex items-center gap-3">
               {authError && <div className="text-xs text-red-400 flex items-center gap-1"><CircleAlert size={12}/>{authError}</div>}
               
+              {/* Dual Network Switcher Toggle */}
+              <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-inner font-mono text-xs">
+                <button
+                  type="button"
+                  onClick={() => switchNetwork("preview")}
+                  style={{
+                    background: currentNetwork === "preview" ? "#b08d57" : "transparent",
+                    color: currentNetwork === "preview" ? "#000000" : "#a1a1aa",
+                    fontWeight: currentNetwork === "preview" ? 700 : 500,
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Switch to Midnight Preview Testnet"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${currentNetwork === "preview" ? "bg-black" : "bg-[#b08d57]"}`} />
+                  <span>Preview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchNetwork("preprod")}
+                  style={{
+                    background: currentNetwork === "preprod" ? "#3fa96b" : "transparent",
+                    color: currentNetwork === "preprod" ? "#000000" : "#a1a1aa",
+                    fontWeight: currentNetwork === "preprod" ? 700 : 500,
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Switch to Midnight Preprod Network"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${currentNetwork === "preprod" ? "bg-black" : "bg-[#3fa96b]"}`} />
+                  <span>Preprod</span>
+                </button>
+              </div>
+
+              {/* Dynamic Network-Specific Explorer Contract Button */}
               <a
-                href={`https://preview.midnightexplorer.com/contract/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74"}`}
+                href={explorerContractUrl}
                 target="_blank"
                 rel="noreferrer"
                 style={{
-                  background: "rgba(63, 169, 107, 0.12)",
-                  color: "#3fa96b",
-                  border: "1px solid rgba(63, 169, 107, 0.3)",
+                  background: currentNetwork === "preprod" ? "rgba(63, 169, 107, 0.15)" : "rgba(176, 141, 87, 0.15)",
+                  color: currentNetwork === "preprod" ? "#3fa96b" : "#b08d57",
+                  border: `1px solid ${currentNetwork === "preprod" ? "rgba(63, 169, 107, 0.35)" : "rgba(176, 141, 87, 0.35)"}`,
                   fontWeight: 600
                 }}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono hover:bg-[#3fa96b]/20 transition-colors cursor-pointer shadow-sm"
-                title="Verify Smart Contract on Midnight Preview Explorer"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono hover:bg-white/10 transition-colors cursor-pointer shadow-sm"
+                title={`Verify on ${netConfig.name} Explorer (${netConfig.explorerBaseUrl})`}
               >
                 <Globe size={13} />
-                <span>Explorer Contract ↗</span>
+                <span>{netConfig.badge} Contract ↗</span>
               </a>
-
-              <div className="flex items-center gap-1.5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-xl p-1 text-xs shadow-inner">
-                <span className="text-[10px] text-zinc-400 uppercase font-mono px-2">Mode:</span>
-                <span className="px-3 py-1 rounded-lg font-mono text-xs bg-white/10 text-white font-semibold uppercase">
-                  {authType || "PREVIEW"}
-                </span>
-              </div>
 
               <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-xl text-xs font-mono text-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]">
                 <UserCheck size={14} className="text-[#3fa96b]" />
@@ -193,6 +238,49 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               </button>
             </div>
           </header>
+
+          {/* Persistent In-Dashboard Notification & Telemetry Bar */}
+          <div className="bg-black/40 backdrop-blur-2xl border-b border-white/[0.08] px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-zinc-300">
+                <Radio size={12} className={currentNetwork === "preprod" ? "text-[#3fa96b] animate-pulse" : "text-[#b08d57] animate-pulse"} />
+                <span className="font-bold uppercase tracking-wider text-[11px]">
+                  {netConfig.name}
+                </span>
+                <span className="text-[10px] text-zinc-500">({netConfig.rpcUri})</span>
+              </div>
+              <span className="text-zinc-600 hidden md:inline">|</span>
+              <span className="text-zinc-400 hidden md:inline text-[11px]">
+                Prover: <strong className="text-zinc-200">1AM Proofstation</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/10 px-2.5 py-1 rounded-lg">
+                <span className="text-zinc-500 text-[10px]">Contract:</span>
+                <span className="text-zinc-300 text-[11px] font-bold truncate max-w-[120px] sm:max-w-[180px]">
+                  {activeContract}
+                </span>
+                <button
+                  onClick={handleCopyContract}
+                  className="text-zinc-400 hover:text-white p-0.5 cursor-pointer ml-1"
+                  title="Copy Contract Address"
+                >
+                  {copiedContract ? <Check size={11} className="text-[#3fa96b]" /> : <Copy size={11} />}
+                </button>
+              </div>
+
+              <a
+                href={explorerContractUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#3fa96b] hover:underline flex items-center gap-1 text-[11px] font-bold"
+              >
+                <span>Verify Explorer</span>
+                <ExternalLink size={10} />
+              </a>
+            </div>
+          </div>
 
           {/* Scrollable Content */}
           <main className="flex-1 overflow-y-auto w-full relative p-6 md:p-8">

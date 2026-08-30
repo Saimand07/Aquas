@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { connectOneAmPreview } from "@/lib/midnight-browser";
+import { connectOneAm, type MidnightNetwork, getNetworkConfig } from "@/lib/midnight-browser";
 
 export type AuthType = "wallet" | "credentials" | "sandbox" | null;
 
@@ -10,7 +10,7 @@ export interface AuthUser {
   role: string;
   identifier: string;
   stateAuthority?: string;
-  network: "preview" | "preprod" | "sandbox";
+  network: MidnightNetwork | "sandbox";
 }
 
 export interface AuthContextType {
@@ -18,9 +18,11 @@ export interface AuthContextType {
   authType: AuthType;
   user: AuthUser | null;
   walletAddress: string | null;
+  currentNetwork: MidnightNetwork;
   isConnecting: boolean;
   error: string | null;
-  connectWallet: () => Promise<boolean>;
+  switchNetwork: (network: MidnightNetwork) => void;
+  connectWallet: (targetNetwork?: MidnightNetwork) => Promise<boolean>;
   signInCredentials: (email: string, password: string) => Promise<boolean>;
   signInSandbox: () => void;
   signOut: () => void;
@@ -37,6 +39,18 @@ const DEMO_USER: AuthUser = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "aquas_auth_session";
+const NETWORK_KEY = "aquas_selected_network";
+
+function getInitialNetwork(): MidnightNetwork {
+  if (typeof window === "undefined") return "preview";
+  try {
+    const saved = localStorage.getItem(NETWORK_KEY);
+    if (saved === "preprod" || saved === "preview") return saved;
+  } catch {
+    // ignore
+  }
+  return "preview";
+}
 
 function getInitialSession(): {
   isAuthenticated: boolean;
@@ -68,6 +82,7 @@ function getInitialSession(): {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState(getInitialSession);
+  const [currentNetwork, setCurrentNetwork] = useState<MidnightNetwork>(getInitialNetwork);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,56 +103,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connectWallet = useCallback(async (): Promise<boolean> => {
+  const switchNetwork = useCallback((network: MidnightNetwork) => {
+    setCurrentNetwork(network);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(NETWORK_KEY, network);
+    }
+    // Update user network if logged in
+    setSession((prev) => {
+      if (prev.user) {
+        const netConfig = getNetworkConfig(network);
+        const updatedUser: AuthUser = {
+          ...prev.user,
+          network,
+          stateAuthority: `${netConfig.name} Shielded Ledger`,
+        };
+        const updatedSession = { ...prev, user: updatedUser };
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSession));
+        }
+        return updatedSession;
+      }
+      return prev;
+    });
+  }, []);
+
+  const connectWallet = useCallback(async (targetNetwork?: MidnightNetwork): Promise<boolean> => {
     setIsConnecting(true);
     setError(null);
+    const networkToUse = targetNetwork || currentNetwork;
     try {
-      const sess = await connectOneAmPreview("/zk/doctor_license/");
+      const sess = await connectOneAm(networkToUse, "/zk/doctor_license/");
       const addr = sess.unshieldedAddress;
+      const netConfig = getNetworkConfig(networkToUse);
       const walletUser: AuthUser = {
         name: `Node ${addr.slice(0, 6)}…${addr.slice(-4)}`,
-        role: "1AM Authenticated Physician",
+        role: `1AM Authenticated Node (${netConfig.badge})`,
         identifier: addr,
-        stateAuthority: "Midnight Preview Shielded Ledger",
-        network: "preview",
+        stateAuthority: `${netConfig.name} Shielded Ledger`,
+        network: networkToUse,
       };
+      setCurrentNetwork(networkToUse);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(NETWORK_KEY, networkToUse);
+      }
       saveSession(true, "wallet", walletUser, addr);
       setIsConnecting(false);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to connect 1AM wallet. Ensure 1AM extension is installed and preview network selected.";
+      const msg = err instanceof Error ? err.message : `Failed to connect 1AM wallet on ${networkToUse}. Ensure 1AM is set to ${networkToUse}.`;
       setError(msg);
       setIsConnecting(false);
       return false;
     }
-  }, [saveSession]);
+  }, [currentNetwork, saveSession]);
 
   const signInCredentials = useCallback(async (email: string): Promise<boolean> => {
     setIsConnecting(true);
     setError(null);
     await new Promise((resolve) => setTimeout(resolve, 600));
+    const netConfig = getNetworkConfig(currentNetwork);
     const credUser: AuthUser = {
       name: email.split("@")[0].toUpperCase() + " (Medical Officer)",
-      role: "Verified Health System Administrator",
-      identifier: `EHR-AUTH-${Math.floor(100000 + Math.random() * 900000)}`,
-      stateAuthority: "Interstate Medical Compact Federation",
-      network: "preview",
+      role: "Board Verifier (Attestation Officer)",
+      identifier: "AUTH-GOV-99214",
+      stateAuthority: `${netConfig.name} Shielded Ledger`,
+      network: currentNetwork,
     };
-    saveSession(true, "credentials", credUser, "0x7a99f4c39021e8d7");
+    saveSession(true, "credentials", credUser, null);
     setIsConnecting(false);
     return true;
-  }, [saveSession]);
+  }, [currentNetwork, saveSession]);
 
   const signInSandbox = useCallback(() => {
-    saveSession(true, "sandbox", DEMO_USER, "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74");
-  }, [saveSession]);
+    const netConfig = getNetworkConfig(currentNetwork);
+    saveSession(true, "sandbox", { ...DEMO_USER, network: currentNetwork, stateAuthority: `${netConfig.name} Sandbox` }, "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74");
+  }, [currentNetwork, saveSession]);
 
   const signOut = useCallback(() => {
     saveSession(false, null, null, null);
     setError(null);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("midnight-wallet-disconnect"));
-    }
   }, [saveSession]);
 
   return (
@@ -147,8 +191,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authType: session.authType,
         user: session.user,
         walletAddress: session.walletAddress,
+        currentNetwork,
         isConnecting,
         error,
+        switchNetwork,
         connectWallet,
         signInCredentials,
         signInSandbox,

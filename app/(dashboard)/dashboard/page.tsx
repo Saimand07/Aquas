@@ -26,7 +26,11 @@ import {
   type LicenseStatus,
   type VerificationResult,
 } from "@/lib/license-registry";
-import { connectOneAmPreview } from "@/lib/midnight-browser";
+import {
+  connectOneAm,
+  getNetworkConfig,
+  getExplorerContractUrl
+} from "@/lib/midnight-browser";
 import { createPrivateCredential, issueLicenseOnChain } from "@/lib/doctor-license-client";
 import { useMidnightWallet } from "@/hooks/use-midnight-wallet";
 import { useAuth } from "@/context/auth-context";
@@ -251,8 +255,8 @@ export default function DashboardCommandCenter() {
 
       if (wallet.connected || auth.authType === "wallet") {
         try {
-          const activeSession = wallet.session || await connectOneAmPreview("/zk/doctor_license/");
-          const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74";
+          const activeSession = wallet.session || await connectOneAm(auth.currentNetwork, "/zk/doctor_license/");
+          const contractAddress = getNetworkConfig(auth.currentNetwork).canonicalContract;
           const issuedAtBigInt = BigInt(Math.floor(Date.now() / 1000));
           const expiresAtBigInt = BigInt(Math.floor(new Date(expiresAt).getTime() / 1000));
           
@@ -540,13 +544,13 @@ export default function DashboardCommandCenter() {
                       <div className="pt-2 border-t border-white/5 flex justify-between items-center">
                         <span className="text-zinc-500 text-[10px]">On-Chain Contract:</span>
                         <a
-                          href={`https://preview.midnightexplorer.com/contract/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74"}`}
+                          href={getExplorerContractUrl(getNetworkConfig(auth.currentNetwork).canonicalContract, auth.currentNetwork)}
                           target="_blank"
                           rel="noreferrer"
                           className="text-[#3fa96b] hover:underline flex items-center gap-1 text-[10px] font-mono"
                         >
                           <Globe size={11} />
-                          <span>View on Explorer ↗</span>
+                          <span>View on Explorer ({getNetworkConfig(auth.currentNetwork).badge}) ↗</span>
                         </a>
                       </div>
                     </div>
