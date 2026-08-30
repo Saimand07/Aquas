@@ -108,6 +108,7 @@ export default function ExplorerPage() {
           <Link href="/batch">Batch Verifier</Link>
           <Link href="/explorer" className="active">Explorer</Link>
           <Link href="/ehr">EHR Gateway</Link>
+          <Link href="/pass">Physician Pass</Link>
           <Link href="/deploy">Deploy</Link>
         </nav>
         <div className="network-controls">
