@@ -7,6 +7,7 @@ export interface StoredDeployment {
   contractAddress: string;
   transactionId: string;
   deployedAt: string;
+  ownerSecret?: string;
 }
 
 export function getStoredDeployment(network: MidnightNetwork): StoredDeployment | null {
@@ -21,6 +22,7 @@ export function getStoredDeployment(network: MidnightNetwork): StoredDeployment 
           contractAddress: clean,
           transactionId: (parsed.transactionId || clean).trim().replace(/^0x/i, ""),
           deployedAt: parsed.deployedAt || new Date().toISOString(),
+          ownerSecret: parsed.ownerSecret?.trim().replace(/^0x/i, ""),
         };
       }
     }
@@ -40,6 +42,7 @@ export function saveDeployedContract(
   network: MidnightNetwork,
   contractAddress: string,
   transactionId: string,
+  ownerSecret?: string,
 ): void {
   if (typeof window === "undefined") return;
   try {
@@ -49,6 +52,7 @@ export function saveDeployedContract(
       contractAddress: cleanAddr,
       transactionId: cleanTx,
       deployedAt: new Date().toISOString(),
+      ownerSecret: ownerSecret ? ownerSecret.trim().replace(/^0x/i, "") : undefined,
     };
     window.localStorage.setItem(`aquas:deployment:${network}`, JSON.stringify(record));
     window.dispatchEvent(
@@ -60,6 +64,7 @@ export function saveDeployedContract(
     // ignore
   }
 }
+
 
 export function clearDeployedContract(network: MidnightNetwork): void {
   if (typeof window === "undefined") return;

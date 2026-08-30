@@ -33,7 +33,7 @@ import {
   getNetworkConfig,
   getExplorerTxUrl
 } from "@/lib/midnight-browser";
-import { useActiveContract } from "@/lib/deployed-contract";
+import { useActiveContract, getStoredDeployment } from "@/lib/deployed-contract";
 
 
 type CircuitType = "proveValidLicense" | "createLicense" | "createBoard" | "deleteLicense";
@@ -51,13 +51,13 @@ export default function CircuitCallWorkbench() {
   const netConfig = getNetworkConfig(currentNetwork);
   const activeContract = useActiveContract(currentNetwork);
 
-  const [selectedCircuit, setSelectedCircuit] = useState<CircuitType>("proveValidLicense");
+  const [selectedCircuit, setSelectedCircuit] = useState<CircuitType>("createBoard");
   const [executing, setExecuting] = useState(false);
   const [logs, setLogs] = useState<string[]>([
     "Midnight Compact Circuit Runtime 0.16.0 initialized.",
     `Prover: 1AM Proofstation (${netConfig.indexerUri})`,
     `Target Ledger: ${netConfig.name}`,
-    `Ready to execute live on-chain circuits against Midnight ${netConfig.badge}.`,
+    `Lifecycle: 1. createBoard -> 2. createLicense -> 3. proveValidLicense.`,
   ]);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -66,8 +66,11 @@ export default function CircuitCallWorkbench() {
   // credentialId starts empty — it is COMPUTED from boardSecret+metadata. User must generate it or paste a real one.
   const [credentialId, setCredentialId] = useState(SAMPLE_CREDENTIAL_ID);
   const [boardSecret, setBoardSecret] = useState(SAMPLE_BOARD_SECRET);
-  const [ownerSecret, setOwnerSecret] = useState(SAMPLE_OWNER_SECRET);
+  const [ownerSecret, setOwnerSecret] = useState(() => {
+    return getStoredDeployment(currentNetwork)?.ownerSecret || SAMPLE_OWNER_SECRET;
+  });
   // Stored private credential for the proveValidLicense circuit (generated alongside credentialId)
+
   const [storedPrivateCredential, setStoredPrivateCredential] = useState<import("@/lib/doctor-license-client").PrivateCredential | null>(null);
 
   const isWalletConnected = Boolean(wallet.connected || (isAuthenticated && authType === "wallet"));
@@ -248,11 +251,17 @@ export default function CircuitCallWorkbench() {
         });
       }
     } catch (err) {
-
-      const msg = err instanceof Error ? err.message : String(err);
+      let msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("issuing board is no longer trusted") || msg.includes("board is not trusted") || msg.includes("board not found")) {
+        msg = "Medical Board not registered on this contract yet. Please execute Step 1 (createBoard) first to register the board authority, then Step 2 (createLicense) before proving.";
+      } else if (msg.includes("license not found")) {
+        msg = "License credential ID not found on-chain. Please execute Step 2 (createLicense) first to commit the license to the ledger.";
+      } else if (msg.includes("license revoked")) {
+        msg = "This license has been revoked on-chain and can no longer be proven.";
+      }
       setErrorMsg(msg);
-      addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Error: ${msg}`);
-      toast.error(`Circuit Execution Failed on ${netConfig.badge}`, { description: msg });
+      addLog(`[ERROR] 1AM Proofstation / ${netConfig.badge} Ledger Notice: ${msg}`);
+      toast.error(`Circuit Action Required`, { description: msg, duration: 8000 });
     } finally {
       setExecuting(false);
     }
@@ -295,28 +304,32 @@ export default function CircuitCallWorkbench() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         {[
           {
+            id: "createBoard",
+            step: "STEP 1",
+            label: "createBoard",
+            icon: Award,
+            desc: "Register Authority",
+          },
+          {
+            id: "createLicense",
+            step: "STEP 2",
+            label: "createLicense",
+            icon: FileCheck2,
+            desc: "Issue Credential",
+          },
+          {
             id: "proveValidLicense",
+            step: "STEP 3",
             label: "proveValidLicense",
             icon: Zap,
             desc: "Zero-Knowledge Prover",
           },
           {
-            id: "createLicense",
-            label: "createLicense",
-            icon: FileCheck2,
-            desc: "Credential Commitment",
-          },
-          {
-            id: "createBoard",
-            label: "createBoard",
-            icon: Award,
-            desc: "Board Authorization",
-          },
-          {
             id: "deleteLicense",
+            step: "STEP 4",
             label: "deleteLicense",
             icon: Trash2,
-            desc: "Revocation Nullifier",
+            desc: "Revoke Nullifier",
           },
         ].map((c) => {
           const Icon = c.icon;
@@ -335,17 +348,21 @@ export default function CircuitCallWorkbench() {
               }}
               className="p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer hover:border-white/20"
             >
-              <div className="flex items-center gap-2">
-                <Icon size={16} className={isSelected ? "text-[#b08d57]" : "text-zinc-400"} />
-                <span className={`text-xs font-mono font-bold truncate ${isSelected ? "text-white" : "text-zinc-300"}`}>
-                  {c.label}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon size={16} className={isSelected ? "text-[#b08d57]" : "text-zinc-400"} />
+                  <span className={`text-xs font-mono font-bold truncate ${isSelected ? "text-white" : "text-zinc-300"}`}>
+                    {c.label}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-zinc-400">{c.step}</span>
               </div>
               <span className="text-[10px] text-zinc-500 font-mono truncate">{c.desc}</span>
             </button>
           );
         })}
       </div>
+
 
       {/* Circuit Parameters Form & Execution */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

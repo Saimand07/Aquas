@@ -174,8 +174,9 @@ export default function DeployClient() {
       setDeployment(record);
       setOwnerSecret(toHex(secret));
       setDeploying(false);
-      saveDeployedContract(deployNetwork, record.contractAddress, record.transactionId);
+      saveDeployedContract(deployNetwork, record.contractAddress, record.transactionId, toHex(secret));
       setStatus(`✓ Contract confirmed on ${netConfig.badge} — indexer syncing in background…`);
+
 
       // Rich in-app toast notification with verifiable explorer link
       toast.success(`Contract Deployed on ${netConfig.badge}!`, {
