@@ -32,7 +32,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     explorerBaseUrl: "https://preview.midnightexplorer.com",
     canonicalContract:
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
+      "0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c",
   },
   preprod: {
     id: "preprod",
@@ -44,9 +44,10 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     explorerBaseUrl: "https://preprod.midnightexplorer.com",
     canonicalContract:
       process.env.NEXT_PUBLIC_PREPROD_CONTRACT_ADDRESS ||
-      "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
+      "0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244",
   },
 };
+
 
 export function getNetworkConfig(network: MidnightNetwork = "preview"): NetworkConfig {
   return NETWORKS[network] ?? NETWORKS.preview;

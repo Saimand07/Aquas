@@ -1,6 +1,7 @@
-﻿<div align="center">
-  <img src="https://github.com/user-attachments/assets/b15d3ef3-4949-4b57-9729-5325f03e2c52" alt="Aquas Landing Page" width="100%">
+<div align="center">
+  <img src="./public/Screenshot/Landing%20page.png" alt="Aquas Landing Page" width="100%">
   <br>
+
   
   [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
   
@@ -115,29 +116,110 @@ Aquas utilizes Midnight's dual-state paradigm to strictly separate publicly veri
 
 ---
 
-## Compilation & Deployment Verification Proofs
+## Verified On-Chain Deployments & Smart Contracts
 
-### Screenshot: Successful Compile Output (Circuits Listed)
-*Compact compiler compiling `contracts/doctor_license.compact` into managed ZKIR circuits (`createBoard`, `createLicense`, `updateBoard`, `updateLicense`, `deleteBoard`, `deleteLicense`, `proveValidLicense`) and prover/verifier keys:*
+Aquas is fully deployed and operational on both **Midnight Preview Testnet** and **Midnight Preprod Network** with live zero-knowledge proof generation and 1AM wallet integration.
 
-<img src="https://github.com/user-attachments/assets/76a27a0d-6e6d-4a37-9c7f-858564c53528" alt="Compile Output and CI Proving Tests" width="100%" />
+### 1. Midnight Preview Testnet
+* **Network:** Midnight Preview Testnet (`preview`)
+* **Contract Address:** [`0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c`](https://explorer.1am.xyz/contract/0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c?network=preview)
+* **Deployment Transaction:** [`0xddf7b73515b722ab3f211d0804f928d1586f5ff2623ecfec2c2d55a313a8f365`](https://explorer.1am.xyz/tx/0xddf7b73515b722ab3f211d0804f928d1586f5ff2623ecfec2c2d55a313a8f365?network=preview)
+* **Block Height:** `#641,015`
+* **Explorer Verification:** [View on 1AM Explorer ↗](https://explorer.1am.xyz/contract/0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c?network=preview) | [View on Midnight Explorer ↗](https://preview.midnightexplorer.com/contracts/0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c)
 
-### Screenshot: Contract Deployed with Address Shown
-*Live deployment on Midnight Preview Testnet with verified contract address:*
-
-<img src="https://github.com/user-attachments/assets/b69efc33-8355-44a0-b3c5-2900fe20b995" alt="Contract Deployed With Address" width="100%" />
+### 2. Midnight Preprod Network
+* **Network:** Midnight Preprod Network (`preprod`)
+* **Contract Address:** [`0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244`](https://explorer.1am.xyz/contract/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244?network=preprod)
+* **Deployment Transaction:** [`0x3515d0932e48f6f0a79e6a3fabaa567438d569321b723b890ff32b12913d96ec`](https://explorer.1am.xyz/tx/0x3515d0932e48f6f0a79e6a3fabaa567438d569321b723b890ff32b12913d96ec?network=preprod)
+* **Block Height:** `#2,326,383`
+* **Explorer Verification:** [View on 1AM Explorer ↗](https://explorer.1am.xyz/contract/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244?network=preprod) | [View on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244)
 
 ---
 
-## Verified On-Chain Transactions & Contracts
+## Application Screenshots & Verification Proofs
 
-Aquas is fully integrated with the Midnight Network. It generates real zero-knowledge proofs and settles them on-chain with complete privacy guarantees.
+### 1. Landing Page
+*Aquas decentralized medical license registry & zero-knowledge verification portal with liquid glass aesthetic:*
 
-> **Network & Testnet Details:**
-> - **Primary Verified Deployment:** Midnight Preview Testnet
-> - **Contract Address:** [`0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74`](https://preview.midnightexplorer.com/contracts/0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74)
-> - **Wallet Integration:** [1AM Browser Extension](https://1am.xyz) configured for Midnight Preview.
-> - **Live Explorer:** View transactions, contract state, and proofs live on the [Midnight Explorer](https://preview.midnightexplorer.com/contracts/0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74).
+<img src="./public/Screenshot/Landing%20page.png" alt="Aquas Landing Page" width="100%" />
+
+---
+
+### 2. In-App Sovereign Smart Contract Deployer
+*Deploy custom instances of the Compact doctor license contract on Preview or Preprod with 1AM Proofstation:*
+
+<img src="./public/Screenshot/Deploy%20your%20contract.png" alt="Deploy Your Contract" width="100%" />
+
+---
+
+### 3. Verified Contract Deployment on Midnight Preview Testnet
+*Smart contract deployment confirmed on Midnight Preview testnet (`0x2459ebb3...74007c`):*
+
+<img src="./public/Screenshot/Contract%20deployed%20on%20preview.png" alt="Contract Deployed on Preview" width="100%" />
+
+---
+
+### 4. Confirmed Deployment Transaction on Midnight Preview
+*On-chain transaction hash for Preview deployment (`0xddf7b735...8f365`) at block #641,015:*
+
+<img src="./public/Screenshot/Transaction%20hash%20on%20preview.png" alt="Transaction Hash on Preview" width="100%" />
+
+---
+
+### 5. Verified Contract Deployment on Midnight Preprod Network
+*Smart contract deployment confirmed on Midnight Preprod network (`0xd1eb4aa8...f21244`):*
+
+<img src="./public/Screenshot/Contract%20Deployed%20on%20Preprod.png" alt="Contract Deployed on Preprod" width="100%" />
+
+---
+
+### 6. Confirmed Deployment Transaction on Midnight Preprod
+*On-chain transaction hash for Preprod deployment (`0x3515d093...d96ec`) at block #2,326,383:*
+
+<img src="./public/Screenshot/Transaction%20Hash%20of%20Preprod.png" alt="Transaction Hash of Preprod" width="100%" />
+
+---
+
+### 7. Primary Source Hospital Verification Desk
+*Zero-knowledge verification desk for hospitals, employers, and state boards with 0-byte PII disclosure:*
+
+<img src="./public/Screenshot/Medical%20license%20Verification.png" alt="Medical License Verification" width="100%" />
+
+---
+
+### 8. Multi-Doctor Batch Verification Hub
+*Enterprise batch verification tool for hospital staffing networks with parallel ZK checks and audit CSV/JSON export:*
+
+<img src="./public/Screenshot/Multi%20Doctor%20Batch%20verification.png" alt="Multi Doctor Batch Verification" width="100%" />
+
+---
+
+### 9. Mobile Physician Pass & Offline TOTP Verification
+*Dynamic rotating QR pass with time-based HMAC-SHA256 zero-knowledge challenge proofs for air-gapped clinical checks:*
+
+<img src="./public/Screenshot/Physical%20Pass.png" alt="Physical Pass" width="100%" />
+
+---
+
+### 10. HL7 FHIR R4 Healthcare EHR Gateway
+*Healthcare interoperability adapter supporting FHIR Practitioner resources and outbound revocation webhooks:*
+
+<img src="./public/Screenshot/Ehr%20gateway.png" alt="EHR Gateway" width="100%" />
+
+---
+
+### 11. Comprehensive Vitest Test Suite
+*44 automated unit and ZK prover tests passing across 9 test suites with complete contract logic validation:*
+
+<img src="./public/Screenshot/vite-test.png" alt="Vitest Test Suite" width="100%" />
+
+---
+
+### 12. Automated GitHub Actions Continuous Integration (CI/CD)
+*Production-ready CI workflow validating TypeScript compilation, ESLint standards, Vitest tests, and Next.js builds:*
+
+<img src="./public/Screenshot/CI%20CD.png" alt="CI CD Pipeline" width="100%" />
+
 
 ---
 
