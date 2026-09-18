@@ -362,4 +362,55 @@ export async function revokeDeaRegistrationOnChain(
   ]);
 }
 
+export async function enrollOracleFeederOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  feederKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const feederKey = exactBytes(feederKeyHex, "Oracle feeder key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "enrollOracleFeeder", [feederKey]);
+}
+
+export async function publishSanctionRootOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  feederSecretHex: string,
+  newRootHex: string,
+) {
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.boardSecret = exactBytes(feederSecretHex, "Feeder secret");
+  return callContract(session, contractAddress, privateState, "publishSanctionRoot", [
+    exactBytes(newRootHex, "New sanction root"),
+  ]);
+}
+
+export async function publishSanctionRootByOwnerOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  newRootHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "publishSanctionRootByOwner", [
+    exactBytes(newRootHex, "New sanction root"),
+  ]);
+}
+
+export async function removeOracleFeederOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  feederKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const feederKey = exactBytes(feederKeyHex, "Oracle feeder key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "removeOracleFeeder", [feederKey]);
+}
+
+
 

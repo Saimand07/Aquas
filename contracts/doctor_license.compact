@@ -37,6 +37,11 @@ export ledger revokedDeaRegistrations: Set<Bytes<32>>;
 export ledger usedPrescriptionTokens: Set<Bytes<32>>;
 export ledger epcsVerificationCount: Counter;
 
+// Continuous Sanction Sentinel & Disciplinary Oracle State
+export ledger trustedOracleFeeders: Set<Bytes<32>>;
+export ledger sanctionAccumulatorRoot: Bytes<32>;
+export ledger sentinelIncidentCount: Counter;
+
 witness ownerSecret(): Bytes<32>;
 witness boardSecret(): Bytes<32>;
 witness doctorSecret(): Bytes<32>;
@@ -125,6 +130,13 @@ circuit authenticatedBoard(): Bytes<32> {
     boardAuthorizations.member(disclose(boardAuthorization(key, secret))),
     "board authorization failed"
   );
+  return key;
+}
+
+circuit authenticatedFeeder(): Bytes<32> {
+  const secret = boardSecret();
+  const key = boardKey(secret);
+  assert(trustedOracleFeeders.member(disclose(key)), "oracle feeder is not trusted");
   return key;
 }
 
@@ -343,6 +355,39 @@ export circuit revokeDeaRegistration(credentialId: Bytes<32>): [] {
     "only authorized DEA authority may revoke registration"
   );
   revokedDeaRegistrations.insert(disclose(credentialId));
+}
+
+// Continuous Sanction Sentinel Circuits -------------------------------------
+
+// Enroll accredited NPDB / HHS-OIG / State Board disciplinary oracle feeder
+export circuit enrollOracleFeeder(feederKey: Bytes<32>): [] {
+  assertOwner();
+  assert(feederKey != default<Bytes<32>>, "oracle feeder key cannot be empty");
+  assert(!trustedOracleFeeders.member(disclose(feederKey)), "oracle feeder already enrolled");
+  trustedOracleFeeders.insert(disclose(feederKey));
+}
+
+// Disciplinary authority publishes updated dynamic accumulator root on Midnight
+export circuit publishSanctionRoot(newRoot: Bytes<32>): [] {
+  authenticatedFeeder();
+  assert(newRoot != default<Bytes<32>>, "sanction accumulator root cannot be empty");
+  sanctionAccumulatorRoot = disclose(newRoot);
+  sentinelIncidentCount.increment(1);
+}
+
+// Emergency root update by contract owner
+export circuit publishSanctionRootByOwner(newRoot: Bytes<32>): [] {
+  assertOwner();
+  assert(newRoot != default<Bytes<32>>, "sanction accumulator root cannot be empty");
+  sanctionAccumulatorRoot = disclose(newRoot);
+  sentinelIncidentCount.increment(1);
+}
+
+// Remove an unauthorized or compromised oracle feeder
+export circuit removeOracleFeeder(feederKey: Bytes<32>): [] {
+  assertOwner();
+  assert(trustedOracleFeeders.member(disclose(feederKey)), "oracle feeder not found");
+  trustedOracleFeeders.remove(disclose(feederKey));
 }
 
 // Public state is read directly through the indexer and generated `ledger()`

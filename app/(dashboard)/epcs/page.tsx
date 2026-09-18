@@ -70,7 +70,6 @@ export default function ConfidentialEPCSPage() {
     setDispenseResult(null);
 
     try {
-      const startTime = performance.now();
       const token = await deriveEphemeralPrescriptionToken(
         doctorSecretHex,
         prescriberBitmask,

@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach } from "vitest";
 import {
   KNOWN_DISCIPLINARY_SANCTIONS,
   computeSanctionLeaf,
-  computeAccumulatorRoot,
   generateMerkleProof,
   verifyMerkleProof,
   initializeAccumulator,
