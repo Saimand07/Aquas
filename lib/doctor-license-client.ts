@@ -309,3 +309,57 @@ export async function propagateIMLCRevocationOnChain(
   ]);
 }
 
+export async function enrollDeaIssuerOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  issuerKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const issuerKey = exactBytes(issuerKeyHex, "DEA Issuer key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "enrollDeaIssuer", [issuerKey]);
+}
+
+export async function verifyPrescriptionAuthorizationOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  privateCredential: PrivateCredential,
+  credentialId: string,
+  prescriptionHashHex: string,
+  pharmacyChallenge: string | Uint8Array,
+  currentTime = BigInt(Math.floor(Date.now() / 1000)),
+) {
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.credentialPayload = exactBytes(privateCredential.payload, "Credential payload");
+  privateState.credentialNonce = exactBytes(privateCredential.nonce, "Credential nonce");
+  privateState.credentialBoardKey = exactBytes(privateCredential.boardKey, "Board key");
+  privateState.doctorSecret = exactBytes(privateCredential.doctorSecret, "Doctor secret");
+
+  const challengeBytes =
+    typeof pharmacyChallenge === "string"
+      ? exactBytes(pharmacyChallenge, "Pharmacy challenge")
+      : pharmacyChallenge;
+
+  return callContract(session, contractAddress, privateState, "verifyPrescriptionAuthorization", [
+    exactBytes(credentialId, "Credential ID"),
+    exactBytes(prescriptionHashHex, "Prescription hash"),
+    challengeBytes,
+    currentTime,
+  ]);
+}
+
+export async function revokeDeaRegistrationOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  issuerSecretHex: string,
+  credentialId: string,
+) {
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.boardSecret = exactBytes(issuerSecretHex, "DEA Issuer secret");
+  return callContract(session, contractAddress, privateState, "revokeDeaRegistration", [
+    exactBytes(credentialId, "Credential ID"),
+  ]);
+}
+
+
