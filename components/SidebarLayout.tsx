@@ -30,6 +30,7 @@ import { useActiveContract } from "@/lib/deployed-contract";
 
 const NAV_ITEMS = [
   { label: "Command Center", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "IMLC Federation", icon: Globe, href: "/imlc" },
   { label: "Batch Verifier", icon: ClipboardList, href: "/batch" },
   { label: "ZK Explorer", icon: Activity, href: "/explorer" },
   { label: "EHR Gateway", icon: Database, href: "/ehr" },
