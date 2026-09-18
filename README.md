@@ -148,10 +148,9 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 
 ### 2. Midnight Preprod Network
 * **Network:** Midnight Preprod Network (`preprod`)
-* **Contract Address:** [`0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244`](https://explorer.1am.xyz/contract/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244?network=preprod)
-* **Deployment Transaction:** [`0x3515d0932e48f6f0a79e6a3fabaa567438d569321b723b890ff32b12913d96ec`](https://explorer.1am.xyz/tx/0x3515d0932e48f6f0a79e6a3fabaa567438d569321b723b890ff32b12913d96ec?network=preprod)
-* **Block Height:** `#2,326,383`
-* **Explorer Verification:** [View on 1AM Explorer ↗](https://explorer.1am.xyz/contract/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244?network=preprod) | [View on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244)
+* **Contract Address:** [`0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68`](https://explorer.1am.xyz/contract/0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68?network=preprod)
+* **Deployment Transaction:** [`0x28db5f2b6e0c132827ca432c3014b1d51a2e4f5f93bf977b4e051e7ca36139ce`](https://explorer.1am.xyz/tx/0x28db5f2b6e0c132827ca432c3014b1d51a2e4f5f93bf977b4e051e7ca36139ce?network=preprod)
+* **Explorer Verification:** [View on 1AM Explorer ↗](https://explorer.1am.xyz/contract/0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68?network=preprod) | [View on Midnight Explorer ↗](https://preprod.midnightexplorer.com/contracts/0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68)
 
 ---
 
@@ -186,14 +185,14 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 ---
 
 ### 5. Verified Contract Deployment on Midnight Preprod Network
-*Smart contract deployment confirmed on Midnight Preprod network (`0xd1eb4aa8...f21244`):*
+*Smart contract deployment confirmed on Midnight Preprod network (`0xce1d7691...437c68`):*
 
 <img src="./public/Screenshot/Contract%20Deployed%20on%20Preprod.png" alt="Contract Deployed on Preprod" width="100%" />
 
 ---
 
 ### 6. Confirmed Deployment Transaction on Midnight Preprod
-*On-chain transaction hash for Preprod deployment (`0x3515d093...d96ec`) at block #2,326,383:*
+*On-chain transaction hash for Preprod deployment (`0x28db5f2b...6139ce`):*
 
 <img src="./public/Screenshot/Transaction%20Hash%20of%20Preprod.png" alt="Transaction Hash of Preprod" width="100%" />
 

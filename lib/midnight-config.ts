@@ -44,7 +44,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     explorerBaseUrl: "https://preprod.midnightexplorer.com",
     canonicalContract:
       process.env.NEXT_PUBLIC_PREPROD_CONTRACT_ADDRESS ||
-      "0xd1eb4aa822360421f5ad357831faf4ebef2b9a7b23e425ee05d3822d92f21244",
+      "0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68",
   },
 };
 
