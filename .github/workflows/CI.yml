@@ -36,10 +36,16 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Compact CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
       - name: Add Compact CLI to PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install Compact compiler 0.31.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: compact update 0.31.1
       - run: npm run contract:compile
       - run: npm run test
