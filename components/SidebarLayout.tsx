@@ -18,7 +18,8 @@ import {
   Radio,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  ShieldAlert
 } from "lucide-react";
 import { shortId } from "@/lib/license-registry";
 import { useState, useEffect, useSyncExternalStore } from "react";
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { label: "Command Center", icon: LayoutDashboard, href: "/dashboard" },
   { label: "IMLC Federation", icon: Globe, href: "/imlc" },
   { label: "Confidential EPCS", icon: Pill, href: "/epcs" },
+  { label: "Sanction Sentinel", icon: ShieldAlert, href: "/sentinel" },
   { label: "Batch Verifier", icon: ClipboardList, href: "/batch" },
   { label: "ZK Explorer", icon: Activity, href: "/explorer" },
   { label: "EHR Gateway", icon: Database, href: "/ehr" },
