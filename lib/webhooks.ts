@@ -1,11 +1,15 @@
-﻿import { toHex } from "./midnight-browser";
+import { toHex } from "./midnight-browser";
 
 export type WebhookEventType =
   | "license.verified"
   | "license.revoked"
   | "license.renewed"
   | "license.expiring_soon"
-  | "registry.board_added";
+  | "registry.board_added"
+  | "license.sanctioned"
+  | "npdb.exclusion_reported"
+  | "oig.exclusion_reported"
+  | "sentinel.lockout_triggered";
 
 export interface WebhookEvent<T = Record<string, unknown>> {
   id: string;
