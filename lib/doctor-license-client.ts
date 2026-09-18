@@ -262,3 +262,50 @@ export async function proveLicenseOnChain(
     BigInt(Math.floor(Date.now() / 1000)),
   ]);
 }
+
+export async function enrollIMLCBoardOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  boardKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const boardKey = exactBytes(boardKeyHex, "Board key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "enrollIMLCBoard", [boardKey]);
+}
+
+export async function verifyIMLCReciprocityOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  privateCredential: PrivateCredential,
+  credentialId: string,
+  targetStateFips: number,
+  challenge: Uint8Array,
+) {
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.credentialPayload = exactBytes(privateCredential.payload, "Credential payload");
+  privateState.credentialNonce = exactBytes(privateCredential.nonce, "Credential nonce");
+  privateState.credentialBoardKey = exactBytes(privateCredential.boardKey, "Board key");
+  privateState.doctorSecret = exactBytes(privateCredential.doctorSecret, "Doctor secret");
+  return callContract(session, contractAddress, privateState, "verifyIMLCReciprocity", [
+    exactBytes(credentialId, "Credential ID"),
+    BigInt(targetStateFips),
+    challenge,
+    BigInt(Math.floor(Date.now() / 1000)),
+  ]);
+}
+
+export async function propagateIMLCRevocationOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  boardSecretHex: string,
+  credentialId: string,
+) {
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.boardSecret = exactBytes(boardSecretHex, "Board secret");
+  return callContract(session, contractAddress, privateState, "propagateIMLCRevocation", [
+    exactBytes(credentialId, "Credential ID"),
+  ]);
+}
+

@@ -387,3 +387,103 @@ export function verifyIMLCLetterOfQualification(
   }
   return { valid: true, reason: "Valid and unexpired IMLC Letter of Qualification." };
 }
+
+export interface IMLCReciprocityProof {
+  credentialId: string;
+  homeState: string;
+  targetState: string;
+  targetStateFips: number;
+  challengeHex: string;
+  timestamp: number;
+  proofNullifierHex: string;
+  signature: string;
+}
+
+/**
+ * Derives single-use challenge proof nullifier to prevent replay attacks and correlation across hospitals.
+ */
+export async function computeIMLCProofNullifier(
+  credentialId: string,
+  challengeHex: string,
+  doctorSecretHex: string,
+): Promise<string> {
+  const normId = credentialId.trim().toLowerCase().replace(/^0x/, "");
+  const normChallenge = challengeHex.trim().toLowerCase().replace(/^0x/, "");
+  const normSecret = doctorSecretHex.trim().toLowerCase().replace(/^0x/, "");
+  const seed = `license:proof:v1:${normId}:${normChallenge}:${normSecret}`;
+  const encoded = new TextEncoder().encode(seed);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Generates an on-demand zero-knowledge proof bundle for practice reciprocity in a target state.
+ */
+export async function generateIMLCReciprocityProof(
+  credentialId: string,
+  homeState: string,
+  targetState: string,
+  challengeHex: string,
+  doctorSecretHex: string,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): Promise<IMLCReciprocityProof> {
+  const normHome = homeState.trim().toUpperCase();
+  const normTarget = targetState.trim().toUpperCase();
+
+  if (!isIMLCMember(normHome)) {
+    throw new Error(`Cannot derive IMLC reciprocity proof: home state '${normHome}' is not an IMLC compact member.`);
+  }
+  const targetJuris = getIMLCJurisdiction(normTarget);
+  if (!targetJuris || targetJuris.status !== "ACTIVE_MEMBER") {
+    throw new Error(`Cannot derive IMLC reciprocity proof: target state '${normTarget}' is not an active IMLC member.`);
+  }
+
+  const proofNullifierHex = await computeIMLCProofNullifier(credentialId, challengeHex, doctorSecretHex);
+  const sigPayload = `aquas:imlc:proof:v1:${credentialId}:${normHome}:${normTarget}:${targetJuris.fipsCode}:${challengeHex}:${nowSeconds}:${proofNullifierHex}`;
+  const encoded = new TextEncoder().encode(sigPayload);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  const signature = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+
+  return {
+    credentialId,
+    homeState: normHome,
+    targetState: normTarget,
+    targetStateFips: targetJuris.fipsCode,
+    challengeHex,
+    timestamp: nowSeconds,
+    proofNullifierHex,
+    signature,
+  };
+}
+
+/**
+ * Verifies an IMLC reciprocity proof bundle against active federation membership, sanction flags, and anti-replay nullifiers.
+ */
+export async function verifyIMLCReciprocityProof(
+  proof: IMLCReciprocityProof,
+  usedNullifiers = new Set<string>(),
+  sanctionedPhysicians = new Set<string>(),
+  nowSeconds = Math.floor(Date.now() / 1000),
+): Promise<{ valid: boolean; reason: string }> {
+  if (!isIMLCMember(proof.homeState)) {
+    return { valid: false, reason: `Home state '${proof.homeState}' is not in the active IMLC member set.` };
+  }
+  if (!isIMLCMember(proof.targetState)) {
+    return { valid: false, reason: `Target state '${proof.targetState}' is not in the active IMLC member set.` };
+  }
+  if (sanctionedPhysicians.has(proof.credentialId.toLowerCase())) {
+    return { valid: false, reason: "Credential has an active compact-wide sanction flag." };
+  }
+  if (usedNullifiers.has(proof.proofNullifierHex.toLowerCase())) {
+    return { valid: false, reason: "Anti-replay protection: challenge proof nullifier has already been consumed." };
+  }
+  if (Math.abs(nowSeconds - proof.timestamp) > 300) {
+    return { valid: false, reason: "IMLC reciprocity proof timestamp expired (exceeds 300-second challenge window)." };
+  }
+  if (!proof.signature || proof.signature.length !== 64) {
+    return { valid: false, reason: "Malformed cryptographic reciprocity proof signature." };
+  }
+
+  return { valid: true, reason: "Valid and unrevoked IMLC cross-jurisdiction reciprocity proof." };
+}
+

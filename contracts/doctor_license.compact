@@ -26,6 +26,11 @@ export ledger activeLicenseCount: Counter;
 export ledger verificationCount: Counter;
 export ledger revocationCount: Counter;
 
+// IMLC Federation State
+export ledger imlcMemberBoards: Set<Bytes<32>>;
+export ledger imlcSanctionedPhysicians: Set<Bytes<32>>;
+export ledger imlcBoardCount: Counter;
+
 witness ownerSecret(): Bytes<32>;
 witness boardSecret(): Bytes<32>;
 witness doctorSecret(): Bytes<32>;
@@ -223,6 +228,54 @@ export circuit proveValidLicense(
   assert(!usedProofs.member(disclose(nullifier)), "proof challenge already used");
   usedProofs.insert(disclose(nullifier));
   verificationCount.increment(1);
+}
+
+// IMLC Federation Circuits -------------------------------------------------
+
+// Enroll accredited state medical board into IMLC Multi-State Federation
+export circuit enrollIMLCBoard(boardKey: Bytes<32>): [] {
+  assertOwner();
+  assert(trustedBoards.member(disclose(boardKey)), "board must be trusted before IMLC enrollment");
+  assert(!imlcMemberBoards.member(disclose(boardKey)), "board already enrolled in IMLC");
+  imlcMemberBoards.insert(disclose(boardKey));
+  imlcBoardCount.increment(1);
+}
+
+// Cross-jurisdiction zero-knowledge proof of equivalency under IMLC Compact rules
+export circuit verifyIMLCReciprocity(
+  credentialId: Bytes<32>,
+  targetStateFips: Uint<16>,
+  hospitalChallenge: Bytes<32>,
+  currentTime: Uint<64>
+): [] {
+  const homeBoard = credentialBoardKey();
+  const derived = licenseCommitment(credentialPayload(), credentialNonce(), homeBoard);
+  assert(disclose(derived) == credentialId, "private credential does not match ID");
+  assert(imlcMemberBoards.member(disclose(homeBoard)), "issuing board not in IMLC federation");
+  assert(issuedLicenses.member(disclose(credentialId)), "license not found");
+  assert(!revokedLicenses.member(disclose(credentialId)), "license revoked");
+  assert(!imlcSanctionedPhysicians.member(disclose(credentialId)), "physician has active compact sanction");
+  const expiresAt = licenseExpiries.lookup(disclose(credentialId));
+  assert(currentTime < expiresAt, "license expired");
+  const nullifier = proofNullifier(credentialId, hospitalChallenge, doctorSecret());
+  assert(!usedProofs.member(disclose(nullifier)), "proof challenge already used");
+  usedProofs.insert(disclose(nullifier));
+  verificationCount.increment(1);
+}
+
+// Cascade revocation: Revokes home license and propagates sanction across all 37 member states
+export circuit propagateIMLCRevocation(credentialId: Bytes<32>): [] {
+  const issuer = authenticatedBoard();
+  assert(issuedLicenses.member(disclose(credentialId)), "license not found");
+  assert(!revokedLicenses.member(disclose(credentialId)), "license already revoked");
+  assert(
+    licenseOwnerships.member(disclose(ownership(credentialId, issuer))),
+    "only issuing board may trigger cascade revocation"
+  );
+  revokedLicenses.insert(disclose(credentialId));
+  imlcSanctionedPhysicians.insert(disclose(credentialId));
+  activeLicenseCount.decrement(1);
+  revocationCount.increment(1);
 }
 
 // Public state is read directly through the indexer and generated `ledger()`
