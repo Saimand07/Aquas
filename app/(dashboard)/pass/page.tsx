@@ -3,10 +3,12 @@
 import { useState } from "react";
 import {
   Smartphone,
-  Scan
+  Scan,
+  Award
 } from "lucide-react";
 import PhysicianPassCard from "@/components/PhysicianPassCard";
 import OfflinePassReader from "@/components/OfflinePassReader";
+import SurgicalPrivilegePass from "@/components/SurgicalPrivilegePass";
 
 // Sample Doctor Credential Data
 const SAMPLE_PHYSICIAN = {
@@ -14,14 +16,14 @@ const SAMPLE_PHYSICIAN = {
   licenseNumber: "NY-294817-MD",
   npiNumber: "1948201938",
   issuingBoard: "New York State Medical Board",
-  specialty: "Interventional Cardiology",
+  specialty: "Cardiothoracic Surgery & Interventional Cardiology",
   credentialId: "0xd5e2dc450d37260f6f43d4b15ab74f48e91dfd81497735506e27c0c3257d9b74",
   doctorSecretHex: "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff",
   boardKeyHex: "d72f60d3f297dc84078e19677b60e88759f9982a3ea3dbf87a387814cda034ad",
 };
 
 export default function PhysicianPassPage() {
-  const [activeTab, setActiveTab] = useState<"pass" | "reader">("pass");
+  const [activeTab, setActiveTab] = useState<"pass" | "reader" | "privileges">("pass");
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
@@ -66,13 +68,30 @@ export default function PhysicianPassPage() {
             <Scan size={13} />
             <span>Scanner Reader</span>
           </button>
+          <button
+            onClick={() => setActiveTab("privileges")}
+            style={{
+              background: activeTab === "privileges" ? "#b08d57" : "transparent",
+              color: activeTab === "privileges" ? "#000000" : "#a1a1aa",
+              fontWeight: activeTab === "privileges" ? 700 : 500
+            }}
+            className="px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Award size={13} />
+            <span>Surgical Privileges</span>
+          </button>
         </div>
       </div>
 
-      {activeTab === "pass" ? (
-        <PhysicianPassCard {...SAMPLE_PHYSICIAN} />
-      ) : (
-        <OfflinePassReader />
+      {activeTab === "pass" && <PhysicianPassCard {...SAMPLE_PHYSICIAN} />}
+      {activeTab === "reader" && <OfflinePassReader />}
+      {activeTab === "privileges" && (
+        <SurgicalPrivilegePass
+          doctorSecretHex={SAMPLE_PHYSICIAN.doctorSecretHex}
+          doctorName={SAMPLE_PHYSICIAN.doctorName}
+          npiNumber={SAMPLE_PHYSICIAN.npiNumber}
+          specialty={SAMPLE_PHYSICIAN.specialty}
+        />
       )}
     </div>
   );
