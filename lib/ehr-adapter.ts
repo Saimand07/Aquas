@@ -1,6 +1,7 @@
 import type { OnChainLicense } from "./midnight-read";
 import type { DisclosedAttributes } from "./selective-disclosure";
 import type { IMLCReciprocityResult } from "./imlc-federation";
+import type { EphemeralPrescriptionToken } from "./epcs-engine";
 
 export interface FhirPractitioner {
   resourceType: "Practitioner";
@@ -246,3 +247,104 @@ export function mapToFhirVerificationResult(
     extension: extensions,
   };
 }
+
+export interface FhirMedicationRequest {
+  resourceType: "MedicationRequest";
+  id: string;
+  status: "active" | "completed" | "cancelled" | "entered-in-error";
+  intent: "order";
+  medicationCodeableConcept: {
+    coding: Array<{
+      system: string;
+      code: string;
+      display: string;
+    }>;
+    text: string;
+  };
+  subject: {
+    reference: string;
+    display?: string;
+  };
+  authoredOn: string;
+  requester: {
+    reference: string;
+    display?: string;
+  };
+  dispenseRequest?: {
+    numberOfRepeatsAllowed: number;
+    quantity: {
+      value: number;
+      unit: string;
+    };
+  };
+  extension?: Array<{
+    url: string;
+    valueString?: string;
+    valueBoolean?: boolean;
+    valueInteger?: number;
+  }>;
+}
+
+/**
+ * Maps an Ephemeral Prescription Authorization Token to a standard HL7 FHIR R4 MedicationRequest resource.
+ */
+export function mapToFhirMedicationRequest(
+  token: EphemeralPrescriptionToken,
+  prescriberName = "Authorized Midnight Prescriber",
+): FhirMedicationRequest {
+  return {
+    resourceType: "MedicationRequest",
+    id: `aq-rx-${token.epatId}`,
+    status: "active",
+    intent: "order",
+    medicationCodeableConcept: {
+      coding: [
+        {
+          system: "http://hl7.org/fhir/sid/ndc",
+          code: token.medicationNdc,
+          display: token.genericName,
+        },
+      ],
+      text: `${token.genericName} (${token.dosage})`,
+    },
+    subject: {
+      reference: `Patient/${token.blindedPatientId.slice(0, 16)}`,
+      display: "Blinded Zero-Knowledge Patient Entity",
+    },
+    authoredOn: new Date(token.issuedAt * 1000).toISOString(),
+    requester: {
+      reference: `Practitioner/${token.pharmacyNpi}`,
+      display: prescriberName,
+    },
+    dispenseRequest: {
+      numberOfRepeatsAllowed: token.schedule === "SCHEDULE_II" ? 0 : 5,
+      quantity: {
+        value: token.quantity,
+        unit: "units",
+      },
+    },
+    extension: [
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/dea-schedule-authorized",
+        valueString: token.schedule,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/epcs-epat-id",
+        valueString: token.epatId,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/prescription-hash",
+        valueString: token.prescriptionHash,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/prescription-nullifier",
+        valueString: token.prescriptionNullifier,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/epcs-21cfr1311-compliant",
+        valueBoolean: true,
+      },
+    ],
+  };
+}
+
