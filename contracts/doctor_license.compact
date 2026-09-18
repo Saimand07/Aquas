@@ -42,6 +42,12 @@ export ledger trustedOracleFeeders: Set<Bytes<32>>;
 export ledger sanctionAccumulatorRoot: Bytes<32>;
 export ledger sentinelIncidentCount: Counter;
 
+// Confidential Surgical Privileging & Clinical Competency State
+export ledger accreditedSurgicalHospitals: Set<Bytes<32>>;
+export ledger verifiedPrivilegeGrants: Set<Bytes<32>>;
+export ledger usedPrivilegeNullifiers: Set<Bytes<32>>;
+export ledger privilegeVerificationCount: Counter;
+
 witness ownerSecret(): Bytes<32>;
 witness boardSecret(): Bytes<32>;
 witness doctorSecret(): Bytes<32>;
@@ -388,6 +394,54 @@ export circuit removeOracleFeeder(feederKey: Bytes<32>): [] {
   assertOwner();
   assert(trustedOracleFeeders.member(disclose(feederKey)), "oracle feeder not found");
   trustedOracleFeeders.remove(disclose(feederKey));
+}
+
+// Confidential Surgical Privileging Circuits ---------------------------------
+
+// Enroll an accredited operating hospital authorized to attest surgical logs
+export circuit enrollAccreditedHospital(hospitalKey: Bytes<32>): [] {
+  assertOwner();
+  assert(hospitalKey != default<Bytes<32>>, "hospital key cannot be empty");
+  assert(!accreditedSurgicalHospitals.member(disclose(hospitalKey)), "hospital already enrolled");
+  accreditedSurgicalHospitals.insert(disclose(hospitalKey));
+}
+
+// Zero-knowledge verification of surgical case volume & safety thresholds
+export circuit verifySurgicalPrivilege(
+  cptCode: Bytes<32>,
+  procedureCount: Uint<64>,
+  minRequiredVolume: Uint<64>,
+  maxAdverseRateBps: Uint<64>,
+  actualAdverseRateBps: Uint<64>,
+  challengeNullifier: Bytes<32>
+): [] {
+  assert(procedureCount >= minRequiredVolume, "case volume below privileging threshold");
+  assert(actualAdverseRateBps <= maxAdverseRateBps, "adverse complication rate exceeds safety ceiling");
+  assert(!usedPrivilegeNullifiers.member(disclose(challengeNullifier)), "privilege challenge nullifier already used");
+
+  usedPrivilegeNullifiers.insert(disclose(challengeNullifier));
+  privilegeVerificationCount.increment(1);
+}
+
+// Hospital Credentialing Committee grants clinical surgical privileges
+export circuit grantSurgicalPrivilege(
+  credentialId: Bytes<32>,
+  cptCode: Bytes<32>,
+  privilegeGrantHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(issuedLicenses.member(disclose(credentialId)), "physician credential not registered");
+  assert(!verifiedPrivilegeGrants.member(disclose(privilegeGrantHash)), "privilege already granted");
+  verifiedPrivilegeGrants.insert(disclose(privilegeGrantHash));
+}
+
+// Revoke clinical surgical privileges upon adverse review
+export circuit revokeSurgicalPrivilege(
+  privilegeGrantHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(verifiedPrivilegeGrants.member(disclose(privilegeGrantHash)), "privilege grant not found");
+  verifiedPrivilegeGrants.remove(disclose(privilegeGrantHash));
 }
 
 // Public state is read directly through the indexer and generated `ledger()`

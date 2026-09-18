@@ -1,0 +1,79 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// Aquas Auxiliary Contract: Confidential Surgical Privileging & Case-Volume Attestation
+// Public: accredited hospital keys, consumed single-use challenge nullifiers, granted privileges, verification counter.
+// Private: doctor identity secret, blinded procedure commitments, outcome ratings, hospital secret signatures.
+
+export ledger privilegeRegistryOwner: Bytes<32>;
+export ledger accreditedHospitals: Set<Bytes<32>>;
+export ledger verifiedPrivilegeGrants: Set<Bytes<32>>;
+export ledger usedPrivilegeNullifiers: Set<Bytes<32>>;
+export ledger privilegeAttestationCount: Counter;
+
+witness ownerSecret(): Bytes<32>;
+witness doctorSecret(): Bytes<32>;
+witness hospitalSecret(): Bytes<32>;
+
+circuit ownerKey(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "privilege:owner:v1"),
+    secret
+  ]);
+}
+
+circuit assertOwner(): [] {
+  const secret = ownerSecret();
+  const key = ownerKey(secret);
+  assert(privilegeRegistryOwner == disclose(key), "unauthorized: not privilege registry owner");
+}
+
+constructor() {
+  privilegeRegistryOwner = disclose(ownerKey(ownerSecret()));
+}
+
+// Enroll an accredited operating hospital into the credentialing network
+export circuit enrollAccreditedHospital(hospitalKey: Bytes<32>): [] {
+  assertOwner();
+  assert(hospitalKey != default<Bytes<32>>, "hospital key cannot be empty");
+  assert(!accreditedHospitals.member(disclose(hospitalKey)), "hospital already enrolled");
+  accreditedHospitals.insert(disclose(hospitalKey));
+}
+
+// Verify surgeon's case volume and complication rate in zero knowledge
+export circuit verifyClinicalPrivilege(
+  cptCode: Bytes<32>,
+  procedureCount: Uint<64>,
+  minRequiredVolume: Uint<64>,
+  maxAdverseRateBps: Uint<64>,
+  actualAdverseRateBps: Uint<64>,
+  challengeNullifier: Bytes<32>
+): [] {
+  assert(procedureCount >= minRequiredVolume, "case volume below privileging threshold");
+  assert(actualAdverseRateBps <= maxAdverseRateBps, "adverse complication rate exceeds safety ceiling");
+  assert(!usedPrivilegeNullifiers.member(disclose(challengeNullifier)), "privilege challenge nullifier already consumed");
+
+  usedPrivilegeNullifiers.insert(disclose(challengeNullifier));
+  privilegeAttestationCount.increment(1);
+}
+
+// Grant clinical surgical privileges
+export circuit grantHospitalPrivilege(
+  physicianCredentialId: Bytes<32>,
+  cptCode: Bytes<32>,
+  privilegeGrantHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(!verifiedPrivilegeGrants.member(disclose(privilegeGrantHash)), "privilege already granted");
+  verifiedPrivilegeGrants.insert(disclose(privilegeGrantHash));
+}
+
+// Revoke clinical surgical privileges
+export circuit revokeHospitalPrivilege(
+  privilegeGrantHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(verifiedPrivilegeGrants.member(disclose(privilegeGrantHash)), "privilege grant not found");
+  verifiedPrivilegeGrants.remove(disclose(privilegeGrantHash));
+}

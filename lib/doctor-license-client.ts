@@ -45,6 +45,13 @@ function exactBytes(value: string, label: string): Uint8Array {
   return bytes;
 }
 
+function padBytes32(text: string): Uint8Array {
+  const enc = new TextEncoder().encode(text);
+  const out = new Uint8Array(32);
+  out.set(enc.slice(0, 32));
+  return out;
+}
+
 function internals(): ContractInternals {
   return new Contract(createWitnesses()) as unknown as ContractInternals;
 }
@@ -411,6 +418,83 @@ export async function removeOracleFeederOnChain(
   const privateState = createInitialPrivateState(ownerSecret);
   return callContract(session, contractAddress, privateState, "removeOracleFeeder", [feederKey]);
 }
+
+export async function enrollAccreditedHospitalOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  hospitalKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const hospitalKey = exactBytes(hospitalKeyHex, "Hospital key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "enrollAccreditedHospital", [hospitalKey]);
+}
+
+export async function verifySurgicalPrivilegeOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  doctorSecretHex: string,
+  cptCode: string,
+  procedureCount: number,
+  minRequiredVolume: number,
+  maxAdverseRateBps: number,
+  actualAdverseRateBps: number,
+  challengeNullifierHex: string,
+) {
+  const doctorSecret = exactBytes(doctorSecretHex, "Doctor secret");
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.doctorSecret = doctorSecret;
+
+  const cptBytes = padBytes32(cptCode);
+  const challengeNullifier = exactBytes(challengeNullifierHex, "Challenge nullifier");
+
+  return callContract(session, contractAddress, privateState, "verifySurgicalPrivilege", [
+    cptBytes,
+    BigInt(procedureCount),
+    BigInt(minRequiredVolume),
+    BigInt(maxAdverseRateBps),
+    BigInt(actualAdverseRateBps),
+    challengeNullifier,
+  ]);
+}
+
+export async function grantSurgicalPrivilegeOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  credentialIdHex: string,
+  cptCode: string,
+  privilegeGrantHashHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const credentialId = exactBytes(credentialIdHex, "Credential ID");
+  const cptBytes = padBytes32(cptCode);
+  const privilegeGrantHash = exactBytes(privilegeGrantHashHex, "Privilege grant hash");
+
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "grantSurgicalPrivilege", [
+    credentialId,
+    cptBytes,
+    privilegeGrantHash,
+  ]);
+}
+
+export async function revokeSurgicalPrivilegeOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  privilegeGrantHashHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const privilegeGrantHash = exactBytes(privilegeGrantHashHex, "Privilege grant hash");
+
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "revokeSurgicalPrivilege", [
+    privilegeGrantHash,
+  ]);
+}
+
 
 
 
