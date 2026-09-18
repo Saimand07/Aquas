@@ -1,5 +1,6 @@
-﻿import type { OnChainLicense } from "./midnight-read";
+import type { OnChainLicense } from "./midnight-read";
 import type { DisclosedAttributes } from "./selective-disclosure";
+import type { IMLCReciprocityResult } from "./imlc-federation";
 
 export interface FhirPractitioner {
   resourceType: "Practitioner";
@@ -83,6 +84,8 @@ export interface EhrVerificationRequest {
   npi?: string;
   doctorName?: string;
   fhirPractitioner?: FhirPractitioner;
+  homeState?: string;
+  targetState?: string;
 }
 
 /**
@@ -114,6 +117,7 @@ export function mapToFhirVerificationResult(
   onChainLicense: OnChainLicense | null,
   disclosedAttributes?: DisclosedAttributes | null,
   now = new Date(),
+  imlcResult?: IMLCReciprocityResult | null,
 ): FhirVerificationResult {
   const isAttested = onChainLicense?.valid === true;
   const isRevoked = onChainLicense?.revoked === true;
@@ -172,11 +176,41 @@ export function mapToFhirVerificationResult(
     });
   }
 
+  if (imlcResult) {
+    extensions.push(
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/imlc-reciprocity-status",
+        valueString: imlcResult.reciprocityStatus,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/imlc-home-jurisdiction",
+        valueString: imlcResult.homeState,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/imlc-target-jurisdiction",
+        valueString: imlcResult.targetState,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/imlc-compact-eligible",
+        valueBoolean: imlcResult.eligible,
+      },
+      {
+        url: "https://aquas.health/fhir/StructureDefinition/imlc-authorized-jurisdictions-count",
+        valueInteger: imlcResult.coveredJurisdictions.length,
+      },
+    );
+  }
+
+  const targetLocations = imlcResult?.coveredJurisdictions?.length
+    ? imlcResult.coveredJurisdictions.map((st) => `Location/US-${st}`)
+    : undefined;
+
   return {
     resourceType: "VerificationResult",
     id: `aq-vr-${credentialId.slice(0, 12)}`,
     status: fhirStatus,
     statusDate: now.toISOString(),
+    targetLocation: targetLocations,
     validationType: {
       coding: [
         {
