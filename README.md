@@ -426,7 +426,7 @@ Aquas strictly segregates public commitments from confidential clinical identity
 | **Application Layer** | Next.js 16 (App Router), React 19, TypeScript | Server Components, dynamic client-side state synchronizers, and verification command center |
 | **Design System** | Tailwind CSS v4, Framer Motion, Lucide Icons | Liquid Glass aesthetic, interactive telemetry charts, and high-performance radar visualizations |
 | **Healthcare Gateway**| HL7 FHIR R4 Practitioner Resource Schema | Standardized hospital EHR integration, automated credential check endpoints, and HMAC webhook dispatching |
-| **Testing & CI/CD** | Vitest 3, ESLint, TypeScript, GitHub Actions | 151 automated unit, circuit, proving, encryption, and adapter test cases across 21 test suites |
+| **Testing & CI/CD** | Vitest 3, ESLint, TypeScript, GitHub Actions | 179 automated unit, circuit, proving, encryption, and adapter test cases across 24 test suites |
 
 ---
 
@@ -453,7 +453,8 @@ Aquas/
 |   |       |-- imlc/verify/route.ts        # IMLC Multi-state reciprocity verification
 |   |       |-- epcs/verify/route.ts        # Shielded DEA EPCS prescription verification
 |   |       |-- sentinel/sync/route.ts      # Real-time NPDB & OIG sanction oracle sync
-|   |       `-- privileges/verify/route.ts  # Surgical case-volume threshold verification
+|   |       |-- privileges/verify/route.ts  # Surgical case-volume threshold verification
+|   |       `-- insurance/verify/route.ts   # Zero-knowledge malpractice underwriting verification
 |   |-- globals.css                         # Tailwind CSS v4 design system
 |   |-- layout.tsx                          # Root layout & theme configuration
 |   `-- page.tsx                            # Modern Animated Product Landing Page
@@ -467,9 +468,10 @@ Aquas/
 |   |-- EPCSPrescribingDesk.tsx             # Shielded DEA Prescribing & Schedule Terminal
 |   |-- SentinelCommandCenter.tsx           # 24/7 Sanction Radar & Sub-5s EHR Lockout Sim
 |   |-- SurgicalPrivilegePass.tsx           # HIPAA-Safe Case-Volume Privileging Terminal
+|   |-- SelectiveDisclosureModal.tsx        # Zero-Knowledge Malpractice & Clean-Claims Inspector
 |   `-- SidebarLayout.tsx                   # Unified Sidebar Navigation & Route Guard
 |-- contracts/                              # Midnight Zero-Knowledge Smart Contracts
-|   |-- doctor_license.compact              # Core Compact contract (Licensing, IMLC, EPCS, Sentinel, Privileges)
+|   |-- doctor_license.compact              # Core Compact contract (Licensing, IMLC, EPCS, Sentinel, Privileges, Insurance)
 |   |-- clinical_privileges.compact         # Auxiliary Compact contract for surgical procedure accumulators
 |   `-- managed/                            # Compiled contract artifacts
 |       `-- doctor_license/                 # Generated TypeScript & WASM contract bindings
@@ -484,6 +486,9 @@ Aquas/
 |   |-- epcs-engine.ts                      # Confidential DEA schedule bitmasks & anti-replay engine
 |   |-- sanction-sentinel.ts                # NPDB / OIG sanction sentinel & Merkle accumulator
 |   |-- surgical-privileges.ts              # CPT surgical catalog, volume thresholds & FHIR R4 mapper
+|   |-- malpractice-insurance.ts            # Malpractice underwriting engine, carriers & clean-claims evaluator
+|   |-- malpractice-client.ts               # Auxiliary malpractice underwriting client SDK
+|   |-- audit-exporter.ts                   # JCAHO / CMS compliance audit report & certificate generator
 |   |-- clinical-privileges-client.ts       # Auxiliary surgical privileges contract SDK
 |   |-- deployed-contract.ts                # Cross-tab reactive contract state (useSyncExternalStore)
 |   |-- deploy-doctor-license.ts            # Deployment helpers & private state initialization
@@ -501,7 +506,7 @@ Aquas/
 |-- scripts/                                # Build & Automation Scripts
 |   |-- compile-contract.sh                 # Compact contract compilation script
 |   `-- sync-contract-assets.sh             # Proof asset synchronization script
-|-- tests/                                  # Automated Test Suite (151 tests across 21 test suites)
+|-- tests/                                  # Automated Test Suite (179 tests across 24 test suites)
 |   |-- doctor-license.test.ts              # Contract logic & state validation tests
 |   |-- batch-verifier.test.ts              # Batch processing & audit export tests
 |   |-- ehr-adapter.test.ts                 # FHIR R4 schema compliance tests
@@ -522,7 +527,10 @@ Aquas/
 |   |-- sentinel-api.test.ts                # Sanction Sentinel REST API tests
 |   |-- surgical-privileges.test.ts         # CPT catalog & volume threshold tests
 |   |-- privilege-circuits.test.ts          # Surgical privileges Compact circuit tests
-|   `-- privilege-api.test.ts               # Surgical privileges REST API tests
+|   |-- privilege-api.test.ts               # Surgical privileges REST API tests
+|   |-- malpractice-insurance.test.ts       # Malpractice underwriting & clean claims tests
+|   |-- malpractice-circuits.test.ts        # Malpractice Compact circuit tests
+|   `-- malpractice-api.test.ts             # Malpractice underwriting REST API tests
 |-- .github/workflows/                      # Continuous Integration
 |   `-- CI.yml                              # Automated Typecheck, Lint, Test, and Build workflow
 |-- package.json                            # Dependencies, scripts & project manifest
@@ -536,7 +544,7 @@ Aquas/
 ## Run Locally
 
 ### Prerequisites
-1. **1AM Wallet:** Install the [1AM Browser Extension](https://1am.xyz) and set network to `preview`.
+1. **1AM Wallet:** Install the [1AM Browser Extension](https://1am.xyz) and set network to `preview` or `preprod`.
 2. **Node.js:** `v22.0.0` or higher installed.
 3. **Local Proof Server:** Ensure proof server is available via your 1AM wallet configuration.
 
@@ -559,11 +567,11 @@ npm run contract:sync-assets
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Connect your **1AM Wallet**, verify you are connected to **Midnight Preview**, and start managing confidential medical credentials!
+Open [http://localhost:3000](http://localhost:3000) in your browser. Connect your **1AM Wallet**, verify you are connected to **Midnight Preview** or **Midnight Preprod**, and start managing confidential medical credentials!
 
 ### Test Suite & Code Quality Commands
 ```bash
-# Run automated tests (151 tests across 21 test suites)
+# Run automated tests (179 tests across 24 test suites)
 npm test
 
 # Run TypeScript type check
