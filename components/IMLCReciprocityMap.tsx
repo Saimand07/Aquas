@@ -5,11 +5,8 @@ import {
   Globe,
   CheckCircle2,
   AlertCircle,
-  Search,
-  ShieldCheck,
   Building2,
-  Radio,
-  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import {
   IMLC_JURISDICTIONS,
@@ -101,7 +98,6 @@ export default function IMLCReciprocityMap({
   onSelectTargetState,
   className = "",
 }: IMLCReciprocityMapProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   const activeStateToInspect = hoveredState || selectedTargetState;
@@ -114,7 +110,6 @@ export default function IMLCReciprocityMap({
   const getStateColorClass = (code: string) => {
     const isHome = code === homeState;
     const isSelected = code === selectedTargetState;
-    const isTarget = code === activeStateToInspect;
     const juris = IMLC_JURISDICTIONS[code];
 
     if (isHome) {

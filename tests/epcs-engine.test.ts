@@ -3,7 +3,6 @@ import {
   blindPatientIdentifier,
   checkPrescriberScheduleAuthority,
   computePrescriptionHash,
-  computePrescriptionNullifier,
   deriveEphemeralPrescriptionToken,
   getAllControlledSubstances,
   getControlledSubstanceByNdc,

@@ -1,29 +1,19 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   computeIMLCProofNullifier,
-  deriveIMLCBoardKey,
   generateIMLCReciprocityProof,
   verifyIMLCReciprocityProof,
-  type IMLCReciprocityProof,
 } from "../lib/imlc-federation";
 import {
   enrollIMLCBoardOnChain,
   verifyIMLCReciprocityOnChain,
   propagateIMLCRevocationOnChain,
-  type PrivateCredential,
 } from "../lib/doctor-license-client";
 
 describe("IMLC Federation Circuits & Cryptographic Reciprocity State Machine", () => {
   const credentialId = "e0c9d5d6d0ce7d5dc8dd4251a8d5ba0b368c42bb653f85b444e1318d93221f70";
   const doctorSecretHex = "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
   const challengeHex = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899";
-
-  const privateCredential: PrivateCredential = {
-    payload: "223344556677889900aabbccddeeff11223344556677889900aabbccddeeff11",
-    nonce: "3344556677889900aabbccddeeff11223344556677889900aabbccddeeff1122",
-    boardKey: deriveIMLCBoardKey("CO"),
-    doctorSecret: doctorSecretHex,
-  };
 
   describe("IMLC Proof Nullifiers & Anti-Replay Cryptography", () => {
     it("derives deterministic 32-byte hex nullifier for specific credential and challenge", async () => {

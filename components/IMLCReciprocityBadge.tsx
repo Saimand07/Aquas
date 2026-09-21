@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, CheckCircle2, AlertTriangle, ShieldCheck, XCircle } from "lucide-react";
+import { Globe, AlertTriangle, XCircle } from "lucide-react";
 import type { ReciprocityStatus } from "@/lib/imlc-federation";
 
 interface IMLCReciprocityBadgeProps {

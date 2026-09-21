@@ -2,7 +2,6 @@ import {
   evaluateIMLCReciprocity,
   generateIMLCReciprocityProof,
   verifyIMLCReciprocityProof,
-  isIMLCMember,
 } from "../../../../../lib/imlc-federation";
 import { mapToFhirVerificationResult } from "../../../../../lib/ehr-adapter";
 
@@ -96,8 +95,35 @@ export async function POST(request: Request) {
         challengeHex,
         body.doctorSecretHex,
       );
-      verification = await verifyIMLCReciprocityProof(proof);
+
+      const sanctionedSet = new Set<string>();
+      if (Array.isArray(body.sanctionedCredentials)) {
+        body.sanctionedCredentials.forEach((s: string) => sanctionedSet.add(String(s).toLowerCase()));
+      }
+      verification = await verifyIMLCReciprocityProof(proof, new Set(), sanctionedSet);
+      if (!verification.valid) {
+        reciprocity.eligible = false;
+        if (verification.reason.toLowerCase().includes("sanction")) {
+          reciprocity.reciprocityStatus = "SANCTION_FLAGGED";
+        }
+        reciprocity.reason = verification.reason;
+      }
     }
+
+    const fhir = mapToFhirVerificationResult(
+      credentialId,
+      {
+        exists: true,
+        valid: reciprocity.eligible,
+        revoked: reciprocity.reciprocityStatus === "SANCTION_FLAGGED",
+        issuedAt: Math.floor(Date.now() / 1000) - 86400 * 30,
+        expiresAt: Math.floor(Date.now() / 1000) + 86400 * 335,
+        issuer: "d72f60d3f297dc84078e19677b60e88759f9982a3ea3dbf87a387814cda034ad",
+      },
+      null,
+      new Date(),
+      reciprocity,
+    );
 
     return Response.json({
       success: true,
@@ -110,6 +136,7 @@ export async function POST(request: Request) {
       coveredJurisdictionsCount: reciprocity.coveredJurisdictions.length,
       proof,
       verification,
+      fhir,
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
