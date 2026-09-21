@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
 import {
-  ShieldCheck,
   Loader2,
   AlertCircle,
   Sparkles,
@@ -94,9 +95,18 @@ export default function SignInPage() {
         >
           {/* Logo Header */}
           <div className="flex flex-col items-center mb-6 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/15 flex items-center justify-center mb-3 shadow-2xl backdrop-blur-xl">
-              <ShieldCheck className="w-8 h-8 text-[#3fa96b]" />
-            </div>
+            <Link href="/" className="group block mb-3 cursor-pointer">
+              <div className="w-18 h-18 rounded-2xl overflow-hidden border border-white/20 flex items-center justify-center shadow-[0_0_35px_rgba(6,182,212,0.4)] backdrop-blur-xl bg-black/80 group-hover:border-cyan-400/60 transition-all p-1">
+                <Image
+                  src="/logo.jpg"
+                  alt="Aquas Logo"
+                  width={72}
+                  height={72}
+                  className="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
+                  priority
+                />
+              </div>
+            </Link>
             <h1 className="text-2xl font-bold tracking-[0.2em] text-white uppercase">
               <span className="text-[#b08d57]">/</span> AQUAS
             </h1>

@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -55,8 +56,15 @@ function Navbar() {
       <div className="max-w-[1600px] mx-auto px-6 lg:px-12 h-full flex items-center justify-between">
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-3 group cursor-pointer">
-          <div className="p-1.5 rounded-xl bg-white/[0.04] border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:border-[#b08d57]/40 transition-all">
-            <ShieldCheck className="w-6 h-6 text-[#3fa96b] transition-transform duration-300 group-hover:scale-110" />
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_0_15px_rgba(6,182,212,0.35)] group-hover:border-cyan-400/60 transition-all flex items-center justify-center bg-black/80 flex-shrink-0">
+            <Image
+              src="/logo.jpg"
+              alt="Aquas Logo"
+              width={36}
+              height={36}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              priority
+            />
           </div>
           <span className="font-mono text-sm tracking-[0.2em] font-bold text-white uppercase">
             <span className="text-[#b08d57]">/</span> AQUAS
@@ -535,7 +543,15 @@ export default function LandingPage() {
           <div className="max-w-[1600px] mx-auto flex flex-col gap-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
               <Link href="/" className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-white" />
+                <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-white/15 shadow-[0_0_12px_rgba(6,182,212,0.3)] flex-shrink-0">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Aquas Logo"
+                    width={28}
+                    height={28}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <span className="font-mono text-sm tracking-[0.2em] font-bold text-white uppercase">
                   AQUAS
                 </span>

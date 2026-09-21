@@ -1,23 +1,26 @@
 <div align="center">
-  <img src="./public/Screenshot/Landing%20page.png" alt="Aquas Landing Page" width="100%">
+  <a href="https://aquas.health">
+    <img src="./public/Screenshot/LogoAquas.jpg" alt="Aquas Network Official Logo" width="180" style="border-radius: 50%; box-shadow: 0 0 45px rgba(6, 182, 212, 0.45); margin-bottom: 16px;">
+  </a>
   <br>
 
-  
-  [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
-  
-  <i>Confidential medical license verification powered by zero-knowledge cryptography.</i>
-  <br><br>
-  
-  # Aquas: Zero-Knowledge Medical License Registry
+  # AQUAS: Zero-Knowledge Medical License Registry
   
   **Enterprise-grade cryptographic privacy and instant verification for doctors, state licensing boards, and healthcare institutions.**
   
+  <i>Confidential medical license verification, sovereign clinical identity, and real-time sanction sentinels powered by Midnight zero-knowledge cryptography.</i>
+  <br><br>
+
+  [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Midnight Network](https://img.shields.io/badge/Midnight-Preview%20Testnet-blueviolet)](https://midnight.network/)
+  [![Midnight Network](https://img.shields.io/badge/Midnight-Preview%20%26%20Preprod-blueviolet)](https://midnight.network/)
   [![Contract: Compact](https://img.shields.io/badge/Smart%20Contract-Compact%20ZK-blue)](./contracts)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
   [![Wallet](https://img.shields.io/badge/Wallet-1AM-orange)](https://1am.xyz)
   [![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](#)
+  <br><br>
+
+  <img src="./public/Screenshot/Landing%20page.png" alt="Aquas Landing Page" width="100%">
 </div>
 
 > 🎬 **Demo Video:** [https://youtu.be/WOtCmrVp94g](https://youtu.be/WOtCmrVp94g)  
@@ -30,12 +33,18 @@
 
 ## 🌟 What's New in Aquas: Next-Gen Healthcare Features
 
-We have recently upgraded Aquas with four major real-world healthcare features. Here is what each feature does, the everyday problem it solves, and how it protects doctors, hospitals, and patients—explained in plain, simple language:
+We have recently upgraded Aquas with five major real-world healthcare features. Here is what each feature does, the everyday problem it solves, and how it protects doctors, hospitals, and patients—explained in plain, simple language:
 
 ### 1. 🌐 Multi-State Doctor Licensing (IMLC Fast-Track)
 * **The Real-World Problem:** In the United States, a doctor who wants to treat patients across state borders (for example, through telemedicine or during emergency doctor shortages) usually has to apply to each state's medical board separately. This paperwork takes 6 to 12 months, costs thousands in duplicate fees, and delays critical patient care.
 * **How Aquas Solved It:** Aquas connects with the Interstate Medical Licensure Compact (IMLC). If a doctor has an active, clean license in their home state, Aquas lets them instantly prove their eligibility across 40+ other member states in seconds. The doctor gets immediate multi-state approval without re-submitting background checks, faxing documents, or waiting months.
 * **Try It In-App:** Explore the interactive **[Multi-State IMLC Map & Letter of Qualification Portal](/imlc)**.
+
+<p align="center">
+  <img src="./public/Screenshot/Cross%20State%20Reciprocity%20Gateway.png" alt="Cross State Reciprocity Gateway" width="100%" />
+  <br>
+  <em><b>Tagline:</b> Instant Interstate Medical Licensure Compact (IMLC) multi-state reciprocity map & cryptographic Letter of Qualification (LOQ) issuance across 37+ member states.</em>
+</p>
 
 ---
 
@@ -44,6 +53,12 @@ We have recently upgraded Aquas with four major real-world healthcare features. 
 * **How Aquas Solved It:** Aquas lets doctors electronically write controlled substance prescriptions **without ever revealing their real DEA number**. The pharmacy receives cryptographic proof that the doctor is legally authorized for that exact schedule (Schedules II through V), while the doctor's actual DEA number stays completely secret and protected against theft.
 * **Try It In-App:** Test the shielded prescription workflow at the **[DEA EPCS Prescribing Desk](/epcs)**.
 
+<p align="center">
+  <img src="./public/Screenshot/Confidential%20DEA%20EPCS%20%26%20Opioid%20Circuits.png" alt="Confidential DEA EPCS & Opioid Circuits" width="100%" />
+  <br>
+  <em><b>Tagline:</b> Shielded Schedule II–V controlled substance electronic prescribing with blind patient nullifiers and cryptographic anti-diversion protection.</em>
+</p>
+
 ---
 
 ### 3. 🚨 24/7 Sanction Sentinel (Locking Out Suspended Doctors in Under 5 Seconds)
@@ -51,12 +66,31 @@ We have recently upgraded Aquas with four major real-world healthcare features. 
 * **How Aquas Solved It:** Aquas acts as an always-on automated safety guard. It continuously syncs with national disciplinary databases. If any disciplinary action or suspension is posted against a doctor anywhere, Aquas instantly alerts hospitals and automatically locks the doctor out of hospital electronic health records and operating systems in **under 5 seconds**—preventing patient harm before it happens.
 * **Try It In-App:** Launch the **[Sanction Sentinel Command Center](/sentinel)** to test live database updates, trigger sub-5s EHR lockouts, and generate instant JCAHO compliance audit logs.
 
+<p align="center">
+  <img src="./public/Screenshot/Real-Time%20Disciplinary%20Sentinel.png" alt="Real-Time Disciplinary Sentinel" width="100%" />
+  <br>
+  <em><b>Tagline:</b> Autonomous real-time NPDB & OIG-LEIE disciplinary oracle triggering sub-5-second multi-state EHR revocation cascades on Midnight consensus.</em>
+</p>
+
 ---
 
 ### 4. 🩺 Confidential Surgical Privileges (Protecting Patient Privacy Under HIPAA)
 * **The Real-World Problem:** Having a general medical license does not mean a doctor can perform complex surgeries like heart bypasses or joint replacements. Hospital committees grant "surgical privileges" only if a surgeon can prove their volume and safety (for example, at least 50 bypass surgeries in the past 12 months with a complication rate under 1.5%). To prove this today, doctors have to print and hand over raw surgery logs containing real patient names, surgery dates, and medical record numbers (MRNs)—violating patient privacy under HIPAA.
 * **How Aquas Solved It:** Surgeons can now prove they completed the required number of surgeries (e.g., 50+ bypasses) with an adverse event rate under 1.5%—**without disclosing a single patient name, surgery date, or patient record**. The hospital gets mathematical proof of the surgeon's clinical competence, while patient identities remain 100% shielded and HIPAA-compliant.
 * **Try It In-App:** Head to the **[Surgical Privileges Tab on the Physician Pass](/pass)** to select surgical procedures (heart bypass, valve replacement, knee/hip replacements, brain surgery) and generate instant zero-knowledge case-volume proofs.
+
+<p align="center">
+  <img src="./public/Screenshot/Physical%20Pass.png" alt="Physical Pass and Surgical Privileges" width="100%" />
+  <br>
+  <em><b>Tagline:</b> HIPAA-safe clinical competency proving minimum case volumes (e.g. ≥50 CABGs) and complication thresholds without exposing patient MRNs or surgery logs.</em>
+</p>
+
+---
+
+### 5. 📑 Zero-Knowledge Malpractice Insurance & Clean-Claims Attestation
+* **The Real-World Problem:** Physicians must maintain Medical Malpractice Liability Insurance ($1,000,000 / $3,000,000 limits). When onboarding with a new hospital or locum agency, physicians must wait 3 to 6 weeks for carriers to mail paper loss-run reports. Furthermore, over 70% of claims are dismissed with zero liability or payout, yet their presence on paper loss runs causes credentialing bias and weeks of committee delays.
+* **How Aquas Solved It:** Accredited malpractice carriers (MedPro, TDC, Berkshire Hathaway Guard, NORCAL, Coverys) issue shielded insurance certificates on Midnight. Doctors prove active coverage, required policy limits, tail coverage (ERE), and a 5-year clean indemnity record in seconds—while dismissed and frivolous filings remain 100% shielded and withheld from hospital review.
+* **Try It In-App:** Open the **Selective Disclosure Inspector** on the Command Center to inspect active underwriter policies and export printable JCAHO/CMS compliance audit certificates.
 
 ---
 
@@ -227,7 +261,7 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 ---
 
 ### 11. Comprehensive Vitest Test Suite
-*151 automated unit, circuit, and integration tests passing across 21 test suites with 100% test pass rate:*
+*179 automated unit, circuit, and integration tests passing across 24 test suites with 100% test pass rate:*
 
 <img src="./public/Screenshot/vite-test.png" alt="Vitest Test Suite" width="100%" />
 
@@ -251,6 +285,27 @@ Aquas is fully deployed and operational on both **Midnight Preview Testnet** and
 *1AM Explorer confirmation showing verified execution of zero-knowledge circuit `call: proveValidLicense` at block #643,139 with 100% success rate:*
 
 <img src="./public/Screenshot/Circuit%20Call.png" alt="Circuit Call Confirmed on 1AM Explorer" width="100%" />
+
+---
+
+### 15. Interstate Medical Licensure Compact (IMLC) Multi-State Reciprocity Gateway
+*Interactive US cartogram reciprocity evaluator, state-by-state eligibility verification, and cryptographic Letter of Qualification (LOQ) issuance across 37+ compact jurisdictions:*
+
+<img src="./public/Screenshot/Cross%20State%20Reciprocity%20Gateway.png" alt="Cross State Reciprocity Gateway" width="100%" />
+
+---
+
+### 16. Confidential DEA EPCS Prescribing Desk & Opioid Circuits
+*Zero-knowledge Schedule II–V controlled substance electronic prescription desk with blind patient nullifiers, cryptographic anti-diversion, and DEA number identity shielding:*
+
+<img src="./public/Screenshot/Confidential%20DEA%20EPCS%20%26%20Opioid%20Circuits.png" alt="Confidential DEA EPCS and Opioid Circuits" width="100%" />
+
+---
+
+### 17. Continuous Sanction Sentinel & Real-Time NPDB / OIG-LEIE Disciplinary Oracle
+*24/7 autonomous exclusion oracle bridging federal disciplinary databases to Midnight consensus, initiating sub-5-second multi-state revocation cascades and JCAHO/CMS compliance audit logs:*
+
+<img src="./public/Screenshot/Real-Time%20Disciplinary%20Sentinel.png" alt="Real-Time Disciplinary Sentinel" width="100%" />
 
 ---
 

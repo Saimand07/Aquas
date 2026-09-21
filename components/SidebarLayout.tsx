@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -9,7 +10,6 @@ import {
   Database,
   Smartphone,
   Rocket,
-  ShieldCheck,
   Unplug,
   CircleAlert,
   UserCheck,
@@ -104,12 +104,24 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         {/* Liquid Glass Sidebar */}
         <aside className="relative w-64 bg-black/45 backdrop-blur-3xl border-r border-white/[0.12] shadow-[inset_-1px_0_1px_rgba(255,255,255,0.08),0_12px_40px_rgba(0,0,0,0.6)] flex flex-col z-40">
           <Link href="/" className="h-20 flex items-center gap-3 px-6 border-b border-white/[0.1] group cursor-pointer">
-            <div className="p-1.5 rounded-xl bg-white/[0.04] border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] group-hover:border-[#b08d57]/40 transition-all">
-              <ShieldCheck className="w-6 h-6 text-[#3fa96b]" />
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_0_15px_rgba(6,182,212,0.35)] group-hover:border-cyan-400/60 transition-all flex items-center justify-center bg-black/80 flex-shrink-0">
+              <Image
+                src="/logo.jpg"
+                alt="Aquas Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                priority
+              />
             </div>
-            <span className="font-mono text-sm tracking-[0.2em] font-bold text-white uppercase">
-              <span className="text-[#b08d57]">/</span> AQUAS
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-mono text-sm tracking-[0.2em] font-bold text-white uppercase truncate">
+                <span className="text-[#b08d57]">/</span> AQUAS
+              </span>
+              <span className="text-[9px] font-mono tracking-wider text-cyan-400/80 -mt-0.5 uppercase">
+                ZK Clinical Registry
+              </span>
+            </div>
           </Link>
 
           <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1.5">

@@ -26,6 +26,11 @@ const dataFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Aquas — Private medical license verification",
   description: "Verify doctor license status without collecting personal files.",
+  icons: {
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({
