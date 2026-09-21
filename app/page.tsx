@@ -558,6 +558,7 @@ export default function LandingPage() {
               </Link>
               
               <div className="flex flex-wrap gap-x-8 gap-y-4 items-center">
+                <a href="https://x.com/AquasNtwrk" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-white transition-colors">X (@AquasNtwrk)</a>
                 <a href="https://github.com/Saimand07/Aquas" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-white transition-colors">GitHub Repository</a>
                 <a href="https://preview.midnightexplorer.com" target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-white transition-colors">Midnight Explorer</a>
                 <Link href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">Dashboard</Link>

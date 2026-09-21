@@ -17,6 +17,8 @@
   [![Contract: Compact](https://img.shields.io/badge/Smart%20Contract-Compact%20ZK-blue)](./contracts)
   [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
   [![Wallet](https://img.shields.io/badge/Wallet-1AM-orange)](https://1am.xyz)
+  [![Follow on X](https://img.shields.io/badge/X-@AquasNtwrk-000000?style=flat&logo=x&logoColor=white)](https://x.com/AquasNtwrk)
+  [![Announcement](https://img.shields.io/badge/X%20Announcement-Launch%20Post-1d9bf0?style=flat&logo=x&logoColor=white)](https://x.com/AquasNtwrk/status/2101953358030307444)
   [![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](#)
   <br><br>
 
@@ -27,6 +29,8 @@
 > 🌐 **Live Application:** [https://license-seal-sigma.vercel.app/](https://license-seal-sigma.vercel.app/)  
 > 📄 **Product Proposal & Specification:** [Read Approved Idea Proposal (proposals.md)](./proposals.md)  
 > 💻 **GitHub Repository:** [https://github.com/Saimand07/Aquas](https://github.com/Saimand07/Aquas)  
+> 🐦 **Official X (Twitter):** [https://x.com/AquasNtwrk](https://x.com/AquasNtwrk) ([@AquasNtwrk](https://x.com/AquasNtwrk))  
+> 📢 **Announcement Post on X:** [https://x.com/AquasNtwrk/status/2101953358030307444](https://x.com/AquasNtwrk/status/2101953358030307444)  
 > ⚡ **Continuous Integration:** [![CI](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Saimand07/Aquas/actions/workflows/CI.yml)
 
 ---
