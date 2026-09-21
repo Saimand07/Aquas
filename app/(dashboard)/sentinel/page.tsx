@@ -12,7 +12,6 @@ import {
   Copy,
   Check,
   Download,
-  Sparkles,
   Clock,
   Building2,
   UserX,
@@ -20,7 +19,7 @@ import {
   RefreshCw,
   Zap,
   Fingerprint,
-  Flame,
+  Database,
 } from "lucide-react";
 import {
   KNOWN_DISCIPLINARY_SANCTIONS,
@@ -34,7 +33,7 @@ import {
 } from "@/lib/sanction-sentinel";
 
 export default function ContinuousSanctionSentinelPage() {
-  const [activeTab, setActiveTab] = useState<"feed" | "simulator" | "jcaho">("simulator");
+  const [activeTab, setActiveTab] = useState<"simulator" | "feed" | "jcaho">("simulator");
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Dynamic accumulator state
@@ -157,27 +156,27 @@ export default function ContinuousSanctionSentinelPage() {
 
     const activeSanction = sanctions.find((s) => s.prescriberNpi === selectedClinicianNpi);
 
-    // Stage 1: Disciplinary Event Ingestion (0 - 400ms)
+    // Stage 1: Disciplinary Event Ingestion (0 - 450ms)
     await new Promise((r) => setTimeout(r, 450));
     setSimulationStage(1);
 
-    // Stage 2: Halo2 ZK Merkle Proof Verification (400 - 1100ms)
+    // Stage 2: Halo2 ZK Merkle Proof Verification (450 - 1150ms)
     await new Promise((r) => setTimeout(r, 700));
     setSimulationStage(2);
 
-    // Stage 3: HMAC-SHA256 Webhook Generation & Broadcast (1100 - 1800ms)
+    // Stage 3: HMAC-SHA256 Webhook Generation & Broadcast (1150 - 1800ms)
     await new Promise((r) => setTimeout(r, 650));
     setSimulationStage(3);
 
-    // Stage 4: Hospital EHR CPOE Order-Entry & Rx Lockout (1800 - 2700ms)
+    // Stage 4: Hospital EHR CPOE Order-Entry & Rx Lockout (1800 - 2650ms)
     await new Promise((r) => setTimeout(r, 850));
     setSimulationStage(4);
 
-    // Stage 5: Physical RFID OR Badge Access Deactivation (2700 - 3600ms)
+    // Stage 5: Physical RFID OR Badge Access Deactivation (2650 - 3400ms)
     await new Promise((r) => setTimeout(r, 750));
     setSimulationStage(5);
 
-    // Stage 6: Chief Medical Officer Escalation (3600 - 4200ms)
+    // Stage 6: Chief Medical Officer Escalation (3400 - 4000ms)
     await new Promise((r) => setTimeout(r, 600));
     setSimulationStage(6);
 
@@ -221,7 +220,8 @@ export default function ContinuousSanctionSentinelPage() {
     setIsExportingJcaho(true);
     try {
       const report = await generateJcahoAuditReport(jcahoRecords, selectedHospital);
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+      const dataStr =
+        "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
       const downloadAnchor = document.createElement("a");
       downloadAnchor.setAttribute("href", dataStr);
       downloadAnchor.setAttribute("download", `JCAHO_SURVEY_${Date.now()}.json`);
@@ -234,156 +234,155 @@ export default function ContinuousSanctionSentinelPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 space-y-8">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-rose-950/20 to-slate-900 p-6 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider">
-              <ShieldAlert className="w-3.5 h-3.5 animate-pulse" />
-              Continuous Sanction Sentinel & Revocation Oracle
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-              Real-Time Disciplinary Sentinel
-            </h1>
-            <p className="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed">
-              Continuous off-chain NPDB &amp; HHS-OIG exclusion feed monitoring anchored to Midnight
-              dynamic Merkle accumulators. Triggers automated sub-5-second EHR credential lockouts before
-              sanctioned clinicians enter the OR.
-            </p>
+    <div className="w-full max-w-7xl mx-auto space-y-8 font-sans pb-16">
+      {/* Header Banner matching Command Center / EPCS / IMLC styling */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-white/10">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 backdrop-blur-xl border border-rose-500/20 text-xs font-mono text-rose-400 mb-2 font-semibold shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+            <Radio size={13} className="animate-pulse" />
+            <span>CONTINUOUS SANCTION SENTINEL &amp; REVOCATION ORACLE</span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+            Real-Time Disciplinary Sentinel
+          </h1>
+          <p className="text-zinc-400 text-sm mt-1 max-w-2xl">
+            Continuous off-chain NPDB &amp; HHS-OIG exclusion feed monitoring anchored to Midnight dynamic
+            Merkle accumulators. Triggers automated sub-5-second EHR credential lockouts before sanctioned
+            clinicians enter surgical suites.
+          </p>
+        </div>
 
-          {/* Quick Regulatory Badge */}
-          <div className="flex flex-col gap-2 p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300">
-            <div className="flex items-center gap-2 font-medium text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-              JCAHO Standard MS.06.01.03 Compliant
-            </div>
-            <div className="flex items-center gap-2 text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              CMS 42 CFR § 482.12 Continuous Audit
-            </div>
-            <div className="flex items-center gap-2 text-slate-400">
-              <Zap className="w-4 h-4 text-amber-400" />
-              Sub-5-Second Epic/Cerner Lockout
-            </div>
+        {/* Global Quick Regulatory Badges in Liquid Glass */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-3.5 py-2 bg-white/[0.025] backdrop-blur-2xl border border-white/10 rounded-2xl text-xs font-mono shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] flex items-center gap-2">
+            <CheckCircle2 size={14} className="text-[#3fa96b]" />
+            <span className="text-zinc-300 font-medium">JCAHO MS.06.01.03</span>
+          </div>
+          <div className="px-3.5 py-2 bg-white/[0.025] backdrop-blur-2xl border border-white/10 rounded-2xl text-xs font-mono shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] flex items-center gap-2">
+            <ShieldCheck size={14} className="text-[#b08d57]" />
+            <span className="text-zinc-300 font-medium">CMS 42 CFR § 482.12</span>
+          </div>
+          <div className="px-3.5 py-2 bg-white/[0.025] backdrop-blur-2xl border border-white/10 rounded-2xl text-xs font-mono shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] flex items-center gap-2">
+            <Clock size={14} className="text-rose-400" />
+            <span className="text-zinc-300 font-medium">&lt; 5.0s SLA</span>
           </div>
         </div>
       </div>
 
-      {/* Metrics Banner */}
+      {/* Metrics Banner in Liquid Glass */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-            <UserX className="w-6 h-6" />
+        {/* Metric 1 */}
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+            <UserX className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-400">Active Exclusions Monitored</div>
+            <div className="text-[11px] font-mono uppercase text-zinc-400">Active Exclusions Monitored</div>
             <div className="text-2xl font-bold text-white mt-0.5">{sanctions.length} Attested</div>
-            <div className="text-[11px] text-rose-400/80">NPDB + HHS-OIG + Medical Boards</div>
+            <div className="text-[10px] font-mono text-rose-400/80">NPDB · HHS-OIG · State Boards</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-            <Fingerprint className="w-6 h-6" />
+        {/* Metric 2 */}
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+            <Fingerprint className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium text-slate-400">Dynamic Accumulator Root</div>
+            <div className="text-[11px] font-mono uppercase text-zinc-400">Dynamic Accumulator Root</div>
             <div className="text-sm font-mono font-bold text-cyan-400 truncate mt-1">
-              {accumulator?.accumulatorRoot ? `${accumulator.accumulatorRoot.slice(0, 16)}...` : "Synchronizing..."}
+              {accumulator?.accumulatorRoot ? `${accumulator.accumulatorRoot.slice(0, 16)}…` : "Synchronizing…"}
             </div>
-            <div className="text-[11px] text-slate-500">Midnight Halo2 Dynamic State</div>
+            <div className="text-[10px] font-mono text-zinc-500">Midnight Halo2 Dynamic State</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <Clock className="w-6 h-6" />
+        {/* Metric 3 */}
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-[#b08d57]/10 border border-[#b08d57]/20 text-[#b08d57]">
+            <Clock className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-400">EHR Lockout Latency</div>
+            <div className="text-[11px] font-mono uppercase text-zinc-400">EHR Lockout Latency</div>
             <div className="text-2xl font-bold text-white mt-0.5">3.9s Avg</div>
-            <div className="text-[11px] text-amber-400">Mandate: &lt; 5.0s Strict</div>
+            <div className="text-[10px] font-mono text-[#b08d57]">Mandate: &lt; 5.0s Strict</div>
           </div>
         </div>
 
-        <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <Radio className="w-6 h-6" />
+        {/* Metric 4 */}
+        <div className="p-5 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all flex items-center gap-4">
+          <div className="p-3 rounded-2xl bg-[#3fa96b]/10 border border-[#3fa96b]/20 text-[#3fa96b]">
+            <Radio className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-400">Disciplinary Feeder Status</div>
+            <div className="text-[11px] font-mono uppercase text-zinc-400">Disciplinary Feeder Status</div>
             <div className="text-2xl font-bold text-white mt-0.5">LIVE 24/7</div>
-            <div className="text-[11px] text-emerald-400">HMAC-SHA256 Signed Feeds</div>
+            <div className="text-[10px] font-mono text-[#3fa96b]">HMAC-SHA256 Signed Feeds</div>
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-800 gap-6">
-        <button
-          onClick={() => setActiveTab("simulator")}
-          className={`pb-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === "simulator"
-              ? "border-rose-500 text-rose-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <Zap className="w-4 h-4" />
-          5-Second EHR Lockout Simulator
-        </button>
-
-        <button
-          onClick={() => setActiveTab("feed")}
-          className={`pb-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === "feed"
-              ? "border-rose-500 text-rose-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <Radio className="w-4 h-4" />
-          Attested Disciplinary Feed ({sanctions.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab("jcaho")}
-          className={`pb-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === "jcaho"
-              ? "border-rose-500 text-rose-400"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          JCAHO / CMS Survey Auditor
-        </button>
+      {/* Modern Liquid Glass Tab Switcher matching Dashboard */}
+      <div className="flex border-b border-white/10 gap-2 overflow-x-auto pb-1">
+        {[
+          { id: "simulator", label: "1. 5-Second EHR Lockout Simulator", icon: Activity },
+          { id: "feed", label: `2. Attested Disciplinary Feed (${sanctions.length})`, icon: Radio },
+          { id: "jcaho", label: "3. JCAHO / CMS Survey Auditor", icon: FileText },
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as "simulator" | "feed" | "jcaho")}
+              style={{
+                background: isActive ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
+                color: isActive ? "#ffffff" : "#a1a1aa",
+                borderColor: isActive ? "rgba(176, 141, 87, 0.5)" : "rgba(255, 255, 255, 0.06)",
+                fontWeight: isActive ? 700 : 500,
+              }}
+              className="px-5 py-3.5 flex items-center gap-2.5 text-sm transition-all rounded-2xl backdrop-blur-xl border hover:text-white cursor-pointer whitespace-nowrap shadow-sm"
+            >
+              <Icon className={`w-4 h-4 ${isActive ? "text-[#b08d57]" : "text-zinc-400"}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB 1: 5-Second EHR Lockout Simulator */}
       {activeTab === "simulator" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Controls Column */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/80 space-y-5">
-              <div className="flex items-center gap-2 text-white font-bold text-lg">
-                <ShieldAlert className="w-5 h-5 text-rose-400" />
-                Simulate Immediate EHR Lockout
+            <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all space-y-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-rose-400">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-white">Simulate Immediate Lockout</h2>
+                    <p className="text-xs text-zinc-400">Sub-5-second automated hospital defense</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
+
+              <p className="text-xs text-zinc-400 leading-relaxed">
                 Test how Aquas detects an NPDB or OIG disciplinary sanction and issues automated cryptographic
                 directives to freeze CPOE order-entry and badge access in under 5 seconds.
               </p>
 
               {/* Clinician Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block font-mono">
                   Target Clinician Roster
                 </label>
                 <select
                   value={selectedClinicianNpi}
                   onChange={(e) => setSelectedClinicianNpi(e.target.value)}
                   disabled={simulationState === "running"}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-rose-500"
+                  className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-3 text-sm text-zinc-200 focus:outline-none focus:border-[#b08d57]/60 font-sans"
                 >
                   <optgroup label="Sanctioned Clinicians (NPDB / OIG Excluded)">
                     <option value="1882773645">Dr. Arthur Vance, MD (NPI: 1882773645) - NPDB Gross Negligence</option>
@@ -400,19 +399,20 @@ export default function ContinuousSanctionSentinelPage() {
 
               {/* EHR System Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block font-mono">
                   Hospital EHR System
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {["Epic Hyperdrive", "Cerner Millennium", "Meditech Expanse"].map((sys) => (
                     <button
                       key={sys}
+                      type="button"
                       onClick={() => setSelectedEhrSystem(sys)}
                       disabled={simulationState === "running"}
-                      className={`py-2 px-3 rounded-lg text-xs font-medium border text-center transition-all ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
                         selectedEhrSystem === sys
-                          ? "bg-rose-500/10 border-rose-500/50 text-rose-300"
-                          : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                          ? "bg-rose-500/15 border-rose-500/50 text-rose-200 shadow-sm font-semibold"
+                          : "bg-white/[0.03] border-white/10 text-zinc-400 hover:text-zinc-200 hover:border-white/20"
                       }`}
                     >
                       {sys}
@@ -423,65 +423,69 @@ export default function ContinuousSanctionSentinelPage() {
 
               {/* Run Simulation Trigger */}
               <button
+                type="button"
                 onClick={handleRunLockoutSimulation}
                 disabled={simulationState === "running"}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-sm shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-sm shadow-[0_8px_24px_rgba(225,29,72,0.35)] flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
               >
                 {simulationState === "running" ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Executing Lockout Pipeline ({((simulatedElapsedMs || 0) / 1000).toFixed(2)}s)...
+                    <span>Executing Lockout Pipeline ({((simulatedElapsedMs || 0) / 1000).toFixed(2)}s)…</span>
                   </>
                 ) : (
                   <>
                     <Zap className="w-4 h-4" />
-                    Trigger Real-Time Sentinel Verification
+                    <span>Trigger Real-Time Sentinel Verification</span>
                   </>
                 )}
               </button>
             </div>
 
             {/* Emergency Feeder Injector */}
-            <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 space-y-3">
+            <div className="p-6 bg-white/[0.025] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-bold text-slate-300 flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                  Live Feeder Stress Injector
+                <div className="text-xs font-bold text-zinc-300 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#b08d57]" />
+                  <span>Live Disciplinary Feeder Stress Injector</span>
                 </div>
                 {injectionSuccess && (
-                  <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+                  <span className="text-[11px] text-[#3fa96b] font-mono flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Root Updated On-Chain
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Simulates an attested NPDB emergency suspension filed right now, publishing a new Merkle
-                accumulator root to Midnight consensus.
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Simulates an attested NPDB emergency suspension filed in real time, recalculating the dynamic Merkle
+                accumulator root and publishing to Midnight consensus.
               </p>
               <button
+                type="button"
                 onClick={handleInjectEmergencySanction}
                 disabled={isInjecting}
-                className="w-full py-2.5 px-3 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                className="w-full py-2.5 px-4 rounded-xl border border-[#b08d57]/30 bg-[#b08d57]/10 hover:bg-[#b08d57]/20 text-[#b08d57] text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 {isInjecting ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <Radio className="w-3.5 h-3.5" />
                 )}
-                Ingest Emergency Revocation (Dr. Victor Frankenstein)
+                <span>Ingest Emergency Revocation (Dr. Victor Frankenstein)</span>
               </button>
             </div>
           </div>
 
           {/* Simulation Progress & Results Column */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/80 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="font-bold text-white text-base flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-rose-400" />
-                  Real-Time Pipeline Execution (Sub-5s Target)
+            <div className="p-6 md:p-8 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all space-y-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="font-bold text-white text-base flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 text-rose-400">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <span>Real-Time Pipeline Execution (Sub-5s Target)</span>
                 </div>
-                <div className="text-xs font-mono px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-rose-400">
+                <div className="text-xs font-mono px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-rose-400">
                   Elapsed: {((simulatedElapsedMs || 0) / 1000).toFixed(2)}s
                 </div>
               </div>
@@ -502,12 +506,12 @@ export default function ContinuousSanctionSentinelPage() {
                   return (
                     <div
                       key={step.id}
-                      className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all backdrop-blur-md ${
                         isDone
-                          ? "bg-rose-950/20 border-rose-500/40 text-slate-100"
+                          ? "bg-rose-500/10 border-rose-500/30 text-zinc-100"
                           : isCurrent
-                          ? "bg-slate-800/60 border-rose-500/60 text-slate-200 animate-pulse"
-                          : "bg-slate-950/40 border-slate-800/60 text-slate-500"
+                          ? "bg-white/[0.06] border-rose-500/60 text-white animate-pulse shadow-[0_0_16px_rgba(244,63,94,0.2)]"
+                          : "bg-white/[0.015] border-white/5 text-zinc-500"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -517,14 +521,14 @@ export default function ContinuousSanctionSentinelPage() {
                               ? "bg-rose-500 text-white"
                               : isCurrent
                               ? "bg-rose-500/20 text-rose-400 border border-rose-500/50"
-                              : "bg-slate-800 text-slate-500"
+                              : "bg-white/10 text-zinc-500"
                           }`}
                         >
                           {isDone ? <Check className="w-3.5 h-3.5" /> : step.id}
                         </div>
                         <span className="text-xs md:text-sm font-medium">{step.title}</span>
                       </div>
-                      <span className="text-xs font-mono text-slate-500">{step.time}</span>
+                      <span className="text-xs font-mono text-zinc-500">{step.time}</span>
                     </div>
                   );
                 })}
@@ -533,13 +537,13 @@ export default function ContinuousSanctionSentinelPage() {
               {/* Final Result Card */}
               {lockoutResult && (
                 <div
-                  className={`p-5 rounded-xl border space-y-4 ${
+                  className={`p-6 rounded-2xl border space-y-4 backdrop-blur-xl ${
                     lockoutResult.sanctioned
-                      ? "bg-rose-950/30 border-rose-500 text-slate-200"
-                      : "bg-emerald-950/30 border-emerald-500 text-slate-200"
+                      ? "bg-rose-950/20 border-rose-500/40 text-zinc-200 shadow-[0_8px_32px_rgba(225,29,72,0.15)]"
+                      : "bg-[#3fa96b]/10 border-[#3fa96b]/30 text-zinc-200 shadow-[0_8px_32px_rgba(63,169,107,0.15)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                     <div className="flex items-center gap-2 font-bold text-base">
                       {lockoutResult.sanctioned ? (
                         <>
@@ -548,52 +552,53 @@ export default function ContinuousSanctionSentinelPage() {
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                          <span className="text-emerald-400">CLINICIAN CLEARED: ZERO ACTIVE SANCTIONS</span>
+                          <CheckCircle2 className="w-5 h-5 text-[#3fa96b]" />
+                          <span className="text-[#3fa96b]">CLINICIAN CLEARED: ZERO ACTIVE SANCTIONS</span>
                         </>
                       )}
                     </div>
-                    <span className="text-xs px-2.5 py-1 rounded bg-slate-950 border border-slate-800 font-mono">
+                    <span className="text-xs px-2.5 py-1 rounded-lg bg-black/50 border border-white/10 font-mono text-zinc-300">
                       Completed in {(lockoutResult.durationMs / 1000).toFixed(2)}s
                     </span>
                   </div>
 
                   {lockoutResult.sanctioned && lockoutResult.record && (
-                    <div className="space-y-2 text-xs text-slate-300">
+                    <div className="space-y-2.5 text-xs text-zinc-300">
                       <div>
-                        <span className="font-semibold text-slate-400">Sanction Authority:</span>{" "}
+                        <span className="font-semibold text-zinc-400">Sanction Authority:</span>{" "}
                         <span className="text-rose-300 font-bold">{lockoutResult.record.sanctionAuthority}</span>
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-400">Statutory Citation:</span>{" "}
-                        <span className="font-mono text-slate-200">{lockoutResult.record.exclusionStatute}</span>
+                        <span className="font-semibold text-zinc-400">Statutory Citation:</span>{" "}
+                        <span className="font-mono text-zinc-200">{lockoutResult.record.exclusionStatute}</span>
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-400">Action Summary:</span>{" "}
-                        <span>{lockoutResult.record.description}</span>
+                        <span className="font-semibold text-zinc-400">Action Summary:</span>{" "}
+                        <span className="text-zinc-300">{lockoutResult.record.description}</span>
                       </div>
 
                       <div className="pt-2">
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                        <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1.5 font-mono">
                           <span>EHR Directive Payload ({selectedEhrSystem})</span>
                           <button
+                            type="button"
                             onClick={() =>
                               copyToClipboard(
                                 JSON.stringify(lockoutResult.ehrDirective, null, 2),
                                 "ehrDirective",
                               )
                             }
-                            className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300"
+                            className="flex items-center gap-1 text-[#b08d57] hover:text-white transition-colors cursor-pointer"
                           >
                             {copiedField === "ehrDirective" ? (
-                              <Check className="w-3 h-3 text-emerald-400" />
+                              <Check className="w-3.5 h-3.5 text-[#3fa96b]" />
                             ) : (
-                              <Copy className="w-3 h-3" />
+                              <Copy className="w-3.5 h-3.5" />
                             )}
-                            Copy Payload
+                            <span>Copy Payload</span>
                           </button>
                         </div>
-                        <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto">
+                        <pre className="p-4 rounded-2xl bg-black/60 border border-white/10 text-[11px] font-mono text-cyan-300 overflow-x-auto shadow-inner leading-relaxed">
                           {JSON.stringify(lockoutResult.ehrDirective, null, 2)}
                         </pre>
                       </div>
@@ -601,7 +606,7 @@ export default function ContinuousSanctionSentinelPage() {
                   )}
 
                   {!lockoutResult.sanctioned && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-zinc-400 leading-relaxed">
                       Clinician verified against active dynamic Merkle accumulator root. Zero matches found in
                       NPDB, HHS-OIG, and state medical board exclusion sets. Privileges remain fully authorized.
                     </p>
@@ -620,14 +625,14 @@ export default function ContinuousSanctionSentinelPage() {
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Radio className="w-5 h-5 text-rose-400 animate-pulse" />
-                Live Disciplinary Incident Feed
+                <span>Live Disciplinary Incident Feed</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Attested disciplinary sanctions signed by NPDB, HHS-OIG LEIE, and state medical boards.
               </p>
             </div>
-            <div className="text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-              Merkle Leaves: {sanctions.length} | Tree Depth: 3
+            <div className="text-xs font-mono text-zinc-400 bg-white/[0.03] border border-white/10 px-3.5 py-2 rounded-xl backdrop-blur-xl">
+              Merkle Leaves: {sanctions.length} · Tree Depth: 3
             </div>
           </div>
 
@@ -635,41 +640,41 @@ export default function ContinuousSanctionSentinelPage() {
             {sanctions.map((sanction) => (
               <div
                 key={sanction.recordId}
-                className="p-5 rounded-2xl border border-slate-800 bg-slate-900/70 hover:border-slate-700 transition-all space-y-4"
+                className="p-6 bg-white/[0.025] hover:bg-white/[0.035] backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)] transition-all space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold">
+                    <span className="px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold font-mono">
                       {sanction.sanctionAuthority}
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[11px] font-mono">
+                    <span className="px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-zinc-400 text-[11px] font-mono">
                       {sanction.severity}
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-slate-500">
+                  <span className="text-xs font-mono text-zinc-500">
                     {new Date(sanction.actionDate * 1000).toLocaleDateString()}
                   </span>
                 </div>
 
                 <div>
                   <h3 className="text-base font-bold text-white">{sanction.clinicianName}</h3>
-                  <div className="text-xs text-slate-400 font-mono">NPI: {sanction.prescriberNpi}</div>
+                  <div className="text-xs text-zinc-400 font-mono">NPI: {sanction.prescriberNpi}</div>
                 </div>
 
-                <div className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                <div className="text-xs text-zinc-300 leading-relaxed bg-black/30 p-3.5 rounded-2xl border border-white/10">
                   <div className="text-rose-300 font-semibold mb-1">{sanction.exclusionStatute}</div>
                   {sanction.description}
                 </div>
 
-                <div className="space-y-1.5 pt-1 text-[11px] font-mono text-slate-500">
+                <div className="space-y-1.5 pt-1 text-[11px] font-mono text-zinc-500 border-t border-white/5">
                   <div className="flex items-center justify-between">
                     <span>Feeder Sig:</span>
-                    <span className="text-cyan-400">{sanction.oracleFeederSignature.slice(0, 16)}...</span>
+                    <span className="text-cyan-400">{sanction.oracleFeederSignature.slice(0, 16)}…</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Merkle Leaf:</span>
-                    <span className="text-slate-400">
-                      {sanction.merkleLeaf ? `${sanction.merkleLeaf.slice(0, 16)}...` : "Derived on-chain"}
+                    <span className="text-zinc-400">
+                      {sanction.merkleLeaf ? `${sanction.merkleLeaf.slice(0, 16)}…` : "Derived on-chain"}
                     </span>
                   </div>
                 </div>
@@ -685,10 +690,10 @@ export default function ContinuousSanctionSentinelPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-emerald-400" />
-                Joint Commission &amp; CMS Continuous Compliance Survey
+                <Building2 className="w-5 h-5 text-[#3fa96b]" />
+                <span>Joint Commission &amp; CMS Continuous Compliance Survey</span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Meets JCAHO Standard MS.06.01.03 and CMS 42 CFR § 482.12 mandates for continuous practitioner surveillance.
               </p>
             </div>
@@ -697,7 +702,7 @@ export default function ContinuousSanctionSentinelPage() {
               <select
                 value={selectedHospital}
                 onChange={(e) => setSelectedHospital(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none"
+                className="bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-[#b08d57]/60 font-sans"
               >
                 <option value="St. Jude Metropolitan Medical Center">St. Jude Metropolitan Medical Center</option>
                 <option value="Mayo Clinic Health System">Mayo Clinic Health System</option>
@@ -705,53 +710,54 @@ export default function ContinuousSanctionSentinelPage() {
               </select>
 
               <button
+                type="button"
                 onClick={handleExportJcahoReport}
                 disabled={isExportingJcaho}
-                className="py-2 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-all"
+                className="py-2.5 px-4 rounded-xl bg-[#3fa96b] hover:bg-[#389a61] text-black text-xs font-bold flex items-center gap-2 shadow-[0_4px_16px_rgba(63,169,107,0.35)] transition-all cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export Survey Package (JSON)
+                <span>Export Survey Package (JSON)</span>
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+          <div className="rounded-3xl border border-white/[0.12] bg-white/[0.025] backdrop-blur-2xl overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_16px_48px_rgba(0,0,0,0.5)]">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800 text-[11px]">
+              <table className="w-full text-left text-xs text-zinc-300">
+                <thead className="bg-white/[0.03] text-zinc-400 font-mono text-[10px] uppercase tracking-wider border-b border-white/10">
                   <tr>
-                    <th className="py-3 px-4">Clinician &amp; NPI</th>
-                    <th className="py-3 px-4">Survey Standard</th>
-                    <th className="py-3 px-4">Sanction Status</th>
-                    <th className="py-3 px-4">Queried Authority</th>
-                    <th className="py-3 px-4">Cryptographic Seal</th>
-                    <th className="py-3 px-4">Verified At</th>
+                    <th className="py-3.5 px-5">Clinician &amp; NPI</th>
+                    <th className="py-3.5 px-5">Survey Standard</th>
+                    <th className="py-3.5 px-5">Sanction Status</th>
+                    <th className="py-3.5 px-5">Queried Authority</th>
+                    <th className="py-3.5 px-5">Cryptographic Seal</th>
+                    <th className="py-3.5 px-5">Verified At</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-white/5">
                   {jcahoRecords.map((record) => (
-                    <tr key={record.auditId} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3 px-4">
+                    <tr key={record.auditId} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="py-3.5 px-5">
                         <div className="font-semibold text-white">{record.clinicianName}</div>
-                        <div className="font-mono text-slate-500">{record.prescriberNpi}</div>
+                        <div className="font-mono text-zinc-500 text-[11px]">{record.prescriberNpi}</div>
                       </td>
-                      <td className="py-3 px-4 font-mono text-cyan-400">{record.surveyStandard}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-5 font-mono text-cyan-400">{record.surveyStandard}</td>
+                      <td className="py-3.5 px-5">
                         {record.sanctionStatus === "CLEARED" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium text-[11px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#3fa96b]/10 border border-[#3fa96b]/30 text-[#3fa96b] font-medium text-[11px]">
                             <CheckCircle2 className="w-3 h-3" /> CLEARED
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-medium text-[11px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-medium text-[11px]">
                             <Lock className="w-3 h-3" /> EXCLUDED
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-400">{record.authorityQueried}</td>
-                      <td className="py-3 px-4 font-mono text-slate-400">
-                        {record.complianceSeal.slice(0, 12)}...
+                      <td className="py-3.5 px-5 text-zinc-400">{record.authorityQueried}</td>
+                      <td className="py-3.5 px-5 font-mono text-zinc-400">
+                        {record.complianceSeal.slice(0, 12)}…
                       </td>
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                      <td className="py-3.5 px-5 text-zinc-500 font-mono text-[11px]">
                         {new Date(record.verifiedAt).toLocaleTimeString()}
                       </td>
                     </tr>
