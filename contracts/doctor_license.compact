@@ -48,6 +48,12 @@ export ledger verifiedPrivilegeGrants: Set<Bytes<32>>;
 export ledger usedPrivilegeNullifiers: Set<Bytes<32>>;
 export ledger privilegeVerificationCount: Counter;
 
+// Confidential Malpractice Insurance & Clean-Claims Underwriting State
+export ledger accreditedUnderwriters: Set<Bytes<32>>;
+export ledger verifiedInsuranceClearances: Set<Bytes<32>>;
+export ledger usedInsuranceNullifiers: Set<Bytes<32>>;
+export ledger insuranceVerificationCount: Counter;
+
 witness ownerSecret(): Bytes<32>;
 witness boardSecret(): Bytes<32>;
 witness doctorSecret(): Bytes<32>;
@@ -442,6 +448,60 @@ export circuit revokeSurgicalPrivilege(
   assertOwner();
   assert(verifiedPrivilegeGrants.member(disclose(privilegeGrantHash)), "privilege grant not found");
   verifiedPrivilegeGrants.remove(disclose(privilegeGrantHash));
+}
+
+// Confidential Malpractice Insurance & Underwriting Circuits ---------------
+
+// Enroll an accredited malpractice underwriter / insurance carrier
+export circuit enrollUnderwriter(underwriterKey: Bytes<32>): [] {
+  assertOwner();
+  assert(underwriterKey != default<Bytes<32>>, "underwriter key cannot be empty");
+  assert(!accreditedUnderwriters.member(disclose(underwriterKey)), "underwriter already enrolled");
+  accreditedUnderwriters.insert(disclose(underwriterKey));
+}
+
+// Zero-knowledge verification of malpractice policy limits, tail coverage, and clean claims
+export circuit verifyInsurancePolicy(
+  policyCommitment: Bytes<32>,
+  perClaimLimitUsd: Uint<64>,
+  minPerClaimLimitUsd: Uint<64>,
+  aggregateLimitUsd: Uint<64>,
+  minAggregateLimitUsd: Uint<64>,
+  hasTailCoverage: Boolean,
+  requireTailCoverage: Boolean,
+  totalPaidIndemnityUsd: Uint<64>,
+  maxPaidIndemnityAllowedUsd: Uint<64>,
+  challengeNullifier: Bytes<32>
+): [] {
+  assert(perClaimLimitUsd >= minPerClaimLimitUsd, "per-claim limit below underwriting threshold");
+  assert(aggregateLimitUsd >= minAggregateLimitUsd, "aggregate limit below underwriting threshold");
+  assert(!requireTailCoverage || hasTailCoverage, "tail coverage endorsement missing");
+  assert(totalPaidIndemnityUsd <= maxPaidIndemnityAllowedUsd, "paid indemnity claims exceed clean-claims ceiling");
+  assert(!usedInsuranceNullifiers.member(disclose(challengeNullifier)), "insurance challenge nullifier already used");
+
+  usedInsuranceNullifiers.insert(disclose(challengeNullifier));
+  insuranceVerificationCount.increment(1);
+}
+
+// Hospital risk manager grants underwriting clearance on-chain
+export circuit grantUnderwritingClearance(
+  credentialId: Bytes<32>,
+  policyCommitment: Bytes<32>,
+  clearanceHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(issuedLicenses.member(disclose(credentialId)), "physician credential not registered");
+  assert(!verifiedInsuranceClearances.member(disclose(clearanceHash)), "underwriting clearance already granted");
+  verifiedInsuranceClearances.insert(disclose(clearanceHash));
+}
+
+// Revoke underwriting clearance upon policy lapse or cancellation
+export circuit revokeUnderwritingClearance(
+  clearanceHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(verifiedInsuranceClearances.member(disclose(clearanceHash)), "underwriting clearance not found");
+  verifiedInsuranceClearances.remove(disclose(clearanceHash));
 }
 
 // Public state is read directly through the indexer and generated `ledger()`

@@ -495,6 +495,86 @@ export async function revokeSurgicalPrivilegeOnChain(
   ]);
 }
 
+export async function enrollUnderwriterOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  underwriterKeyHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const underwriterKey = exactBytes(underwriterKeyHex, "Underwriter key");
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "enrollUnderwriter", [underwriterKey]);
+}
 
+export async function verifyInsurancePolicyOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  doctorSecretHex: string,
+  policyCommitmentHex: string,
+  perClaimLimitUsd: number,
+  minPerClaimLimitUsd: number,
+  aggregateLimitUsd: number,
+  minAggregateLimitUsd: number,
+  hasTailCoverage: boolean,
+  requireTailCoverage: boolean,
+  totalPaidIndemnityUsd: number,
+  maxPaidIndemnityAllowedUsd: number,
+  challengeNullifierHex: string,
+) {
+  const doctorSecret = exactBytes(doctorSecretHex, "Doctor secret");
+  const privateState = createInitialPrivateState(new Uint8Array(32));
+  privateState.doctorSecret = doctorSecret;
 
+  const policyCommitment = exactBytes(policyCommitmentHex, "Policy commitment");
+  const challengeNullifier = exactBytes(challengeNullifierHex, "Challenge nullifier");
 
+  return callContract(session, contractAddress, privateState, "verifyInsurancePolicy", [
+    policyCommitment,
+    BigInt(perClaimLimitUsd),
+    BigInt(minPerClaimLimitUsd),
+    BigInt(aggregateLimitUsd),
+    BigInt(minAggregateLimitUsd),
+    hasTailCoverage,
+    requireTailCoverage,
+    BigInt(totalPaidIndemnityUsd),
+    BigInt(maxPaidIndemnityAllowedUsd),
+    challengeNullifier,
+  ]);
+}
+
+export async function grantUnderwritingClearanceOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  credentialIdHex: string,
+  policyCommitmentHex: string,
+  clearanceHashHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const credentialId = exactBytes(credentialIdHex, "Credential ID");
+  const policyCommitment = exactBytes(policyCommitmentHex, "Policy commitment");
+  const clearanceHash = exactBytes(clearanceHashHex, "Clearance hash");
+
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "grantUnderwritingClearance", [
+    credentialId,
+    policyCommitment,
+    clearanceHash,
+  ]);
+}
+
+export async function revokeUnderwritingClearanceOnChain(
+  session: BrowserSession,
+  contractAddress: string,
+  ownerSecretHex: string,
+  clearanceHashHex: string,
+) {
+  const ownerSecret = exactBytes(ownerSecretHex, "Owner secret");
+  const clearanceHash = exactBytes(clearanceHashHex, "Clearance hash");
+
+  const privateState = createInitialPrivateState(ownerSecret);
+  return callContract(session, contractAddress, privateState, "revokeUnderwritingClearance", [
+    clearanceHash,
+  ]);
+}

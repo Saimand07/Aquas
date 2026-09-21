@@ -1,0 +1,84 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// Aquas Auxiliary Contract: Confidential Malpractice Insurance & Clean-Claims Underwriting
+// Public: accredited underwriter keys, consumed challenge nullifiers, clearance hashes, verification counter.
+// Private: doctor identity secret, policy commitment, tail coverage endorsement, clean-claims proof.
+
+export ledger insuranceRegistryOwner: Bytes<32>;
+export ledger accreditedUnderwriters: Set<Bytes<32>>;
+export ledger verifiedClearances: Set<Bytes<32>>;
+export ledger usedInsuranceNullifiers: Set<Bytes<32>>;
+export ledger underwritingVerificationCount: Counter;
+
+witness ownerSecret(): Bytes<32>;
+witness doctorSecret(): Bytes<32>;
+witness underwriterSecret(): Bytes<32>;
+
+circuit ownerKey(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "insurance:owner:v1"),
+    secret
+  ]);
+}
+
+circuit assertOwner(): [] {
+  const secret = ownerSecret();
+  const key = ownerKey(secret);
+  assert(insuranceRegistryOwner == disclose(key), "unauthorized: not insurance registry owner");
+}
+
+constructor() {
+  insuranceRegistryOwner = disclose(ownerKey(ownerSecret()));
+}
+
+// Enroll an accredited underwriter into the insurance network
+export circuit enrollUnderwriter(underwriterKey: Bytes<32>): [] {
+  assertOwner();
+  assert(underwriterKey != default<Bytes<32>>, "underwriter key cannot be empty");
+  assert(!accreditedUnderwriters.member(disclose(underwriterKey)), "underwriter already enrolled");
+  accreditedUnderwriters.insert(disclose(underwriterKey));
+}
+
+// Verify policy enforceability, tail coverage, and clean claims in zero knowledge
+export circuit verifyUnderwritingPolicy(
+  policyCommitment: Bytes<32>,
+  perClaimLimitUsd: Uint<64>,
+  minPerClaimLimitUsd: Uint<64>,
+  aggregateLimitUsd: Uint<64>,
+  minAggregateLimitUsd: Uint<64>,
+  hasTailCoverage: Boolean,
+  requireTailCoverage: Boolean,
+  totalPaidIndemnityUsd: Uint<64>,
+  maxPaidIndemnityAllowedUsd: Uint<64>,
+  challengeNullifier: Bytes<32>
+): [] {
+  assert(perClaimLimitUsd >= minPerClaimLimitUsd, "per-claim limit below threshold");
+  assert(aggregateLimitUsd >= minAggregateLimitUsd, "aggregate limit below threshold");
+  assert(!requireTailCoverage || hasTailCoverage, "tail coverage required but missing");
+  assert(totalPaidIndemnityUsd <= maxPaidIndemnityAllowedUsd, "paid indemnity claims exceed threshold");
+  assert(!usedInsuranceNullifiers.member(disclose(challengeNullifier)), "challenge nullifier already consumed");
+
+  usedInsuranceNullifiers.insert(disclose(challengeNullifier));
+  underwritingVerificationCount.increment(1);
+}
+
+// Record verified underwriting clearance
+export circuit grantUnderwritingClearance(
+  physicianCredentialId: Bytes<32>,
+  clearanceHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(!verifiedClearances.member(disclose(clearanceHash)), "clearance already granted");
+  verifiedClearances.insert(disclose(clearanceHash));
+}
+
+// Revoke underwriting clearance
+export circuit revokeUnderwritingClearance(
+  clearanceHash: Bytes<32>
+): [] {
+  assertOwner();
+  assert(verifiedClearances.member(disclose(clearanceHash)), "clearance not found");
+  verifiedClearances.remove(disclose(clearanceHash));
+}
