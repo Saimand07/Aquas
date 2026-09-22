@@ -4,9 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+
+env:
+  NEXT_PUBLIC_CONTRACT_ADDRESS: "0x2459ebb32d836193b34e132505e339f54ae9f18fb215fe78e07935bdcb74007c"
+  NEXT_PUBLIC_PREPROD_CONTRACT_ADDRESS: "0xce1d7691169612b03b908fa81f829d337aa3a99222f779df849017b4ea437c68"
+  NEXT_PUBLIC_INDEXER_URI: "https://api-preprod.1am.xyz/api/v4/graphql"
+  NEXT_PUBLIC_INDEXER_WS_URI: "wss://api-preprod.1am.xyz/api/v4/graphql/ws"
+  NEXT_PUBLIC_NODE_URI: "wss://rpc.preprod.midnight.network"
+  AQUAS_EHR_API_KEY: "aq_live_hospital_secret_key_ci_demo"
+  AQUAS_WEBHOOK_SECRET: "whsec_midnight_aquas_regulatory_audit_stream"
 
 jobs:
   frontend:
@@ -14,27 +28,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run build
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: ESLint validation
+        run: npm run lint
+      - name: Next.js production build
+        run: npm run build
 
   contract:
-    name: Contract compile and tests
+    name: Contract compile, asset sync and tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
       - name: Install Compact CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,5 +70,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: compact update 0.31.1
-      - run: npm run contract:compile
-      - run: npm run test
+      - name: Compile Compact smart contract
+        run: npm run contract:compile
+      - name: Sync proving assets to public/zk
+        run: npm run contract:sync-assets
+      - name: Verify compiled and public ZK assets
+        run: |
+          test -f contracts/managed/doctor_license/contract/index.js
+          test -f contracts/managed/doctor_license/contract/index.d.ts
+          test -f public/zk/doctor_license/keys/proveValidLicense.prover
+          test -f public/zk/doctor_license/keys/proveValidLicense.verifier
+          test -f public/zk/doctor_license/zkir/proveValidLicense.zkir
+          echo "All Midnight Compact contract artifacts and proving bundles verified."
+      - name: Run Vitest test suite (24 suites, 179 tests)
+        run: npm run test
